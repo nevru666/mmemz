@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Run delivery report — help</title>
+<style>
+:root { color-scheme: light dark; }
+  body { margin: 0; padding: 2rem 1.25rem 4rem;
+         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         font-size: 16px; line-height: 1.55; color: #1c1c1e; background: #ffffff; }
+  main { max-width: 52rem; margin: 0 auto; }
+  h1 { font-size: 1.7rem; line-height: 1.25; margin: 0 0 1.2rem; }
+  h2 { font-size: 1.28rem; margin: 2.2rem 0 0.6rem; padding-bottom: 0.2rem; border-bottom: 1px solid #d9d9de; }
+  h3 { font-size: 1.05rem; margin: 1.5rem 0 0.5rem; }
+  p { margin: 0.6rem 0; }
+  ul { margin: 0.6rem 0; padding-left: 1.4rem; }
+  li { margin: 0.25rem 0; }
+  blockquote { margin: 0.7rem 0; padding: 0.4rem 0 0.4rem 1rem;
+               border-left: 3px solid #b9b9c2; color: #3a3a40; background: #f7f7f9; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+         font-size: 0.9em; background: #f0f0f3; padding: 0.1em 0.3em; border-radius: 3px; }
+  strong { font-weight: 600; }
+  @media (prefers-color-scheme: dark) {
+    body { color: #e7e7ea; background: #16161a; }
+    h2 { border-bottom-color: #33333c; }
+    blockquote { color: #c9c9d1; background: #1d1d22; border-left-color: #4a4a56; }
+    code { background: #26262d; }
+  }
+</style>
+</head>
+<body>
+<main>
+<h1>Run delivery report — help</h1>
+<ul>
+<li><strong>generated:</strong> 2026-10-26 12:10:30</li>
+<li><strong>cwd:</strong> /home/mmonk/Downloads/LSTM_VS_LLM/mmemz</li>
+<li><strong>agent / model:</strong> orchestrator / deepseek-v4.1-flash</li>
+<li><strong>session:</strong> session-613330-bb649e96d4d44b22.jsonl</li>
+</ul>
+<h2>Goal</h2>
+<blockquote>Goal: Extract mem0 v2.2.1&#x27;s maths and code for its entity/attribute memory strategies (recognizing → injecting → extracting → consolidating → returning entities/attributes → reconstructing memories from graph paths) so the user can REUSE them into their own Agentic graph context — the existing service at /home/mmonk/Downloads/LSTM_VS_LLM/memory_service_v_2.3.0 — to build a new version of their graph content memory service under /home/mmonk/Downloads/LSTM_VS_LLM/mmemz. Two parts: (a) the source-level six-phase report with file:line evidence, DONE and audited at mmemz/deliverables/mem0-entity-graph-pipeline.md; (b) the extraction itself — runnable, self-tested scoring maths in mmemz plus a port spec naming the exact seam in the user&#x27;s repo (agentmem/memory_retrieval.py, agentmem/vecops.py, agentmem/models.py, v3/) for each piece, and stating what NOT to port because the target is already ahead (multi-hop expand_reachable in agentmem/graph_walk.py vs mem0&#x27;s single hop).</blockquote>
+<p>status: <strong>active</strong> (source: user)</p>
+<h2>Goal history vs original demand</h2>
+<p><strong>Original demand (verbatim user asks):</strong></p>
+<blockquote>help<br>I m highly interested in the process of recognizing, injecting,  extracting,  consolidating, returning the entities and attributs and reconstructing full memories out of the graph paths<br>please extract the maths and code to allow me to reuse these strategies into my own Agentic graph context that is sitting here : /home/mmonk/Downloads/LSTM_VS_LLM/memory_service_v_2.3.0 to build a new version of my graph content memory service under this actual location that Ill call mmemz</blockquote>
+<p><strong>Goal changes</strong> (source <code>auto</code> = the harness/model&#x27;s re-derivation, not the user&#x27;s words):</p>
+<p>1. <code>source: auto</code> — Clarify what kind of help the user needs and identify the most immediate actionable next step.</p>
+<p>2. <code>source: auto</code> — Clarify what kind of help the user needs and identify the most immediate actionable next step. Also: Focus the help on mem0&#x27;s memory pipeline mechanics: entity and attribute recognition, injection into the graph, extraction, consolidation, and returning of entities/attributes; Explain how full memories are reconstructed from graph paths (path traversal back into complete memories)</p>
+<p>3. <code>source: user</code> — Goal: Clarify what kind of help the user needs and identify the most immediate actionable next step. Also: Focus the help on mem0&#x27;s memory pipeline mechanics — the user is highly interested in the process of recognizing, injecting,  extracting,  consolidating, returning the entities and attributs and reconstructing full memories out of the graph paths. Deliver a source-level report of that six-phase process for the OSS repo at /home/mmonk/Downloads/mem0-main(3)/mem0-main (mem0 v2.2.1), with file:line evidence, plus the immediate next steps.</p>
+<p>4. <code>source: user</code> — please extract the maths and code to allow me to reuse these strategies into my own Agentic graph context that is sitting here : /home/mmonk/Downloads/LSTM_VS_LLM/memory_service_v_2.3.0 to build a new version of my graph content memory service under this actual location that Ill call mmemz</p>
+<p>5. <code>source: user</code> — Goal: Extract mem0 v2.2.1&#x27;s maths and code for its entity/attribute memory strategies (recognizing → injecting → extracting → consolidating → returning entities/attributes → reconstructing memories from graph paths) so the user can REUSE them into their own Agentic graph context — the existing service at /home/mmonk/Downloads/LSTM_VS_LLM/memory_service_v_2.3.0 — to build a new version of their graph content memory service under /home/mmonk/Downloads/LSTM_VS_LLM/mmemz. Two parts: (a) the source-level six-phase report with file:line evidence, DONE and audited at mmemz/deliverables/mem0-entity-graph-pipeline.md; (b) the extraction itself — runnable, self-tested scoring maths in mmemz plus a port spec naming the exact seam in the user&#x27;s repo (agentmem/memory_retrieval.py, agentmem/vecops.py, agentmem/models.py, v3/) for each piece, and stating what NOT to port because the target is already ahead (multi-hop expand_reachable in agentmem/graph_walk.py vs mem0&#x27;s single hop). ← current</p>
+<p><strong>⚠ requirement drift:</strong> the current goal drops demand clause(s) the user actually asked for: &#x27;I m highly interested in the process of recognizing&#x27;; &#x27;help&#x27;.</p>
+<h2>Plan end-state</h2>
+<ul>
+<li>[x] Deliver /reverse brief for the mem0 target</li>
+<li>[x] Scaffold the source-level six-phase report and its code map</li>
+<li>[x] §2 recognizing + §3 injecting</li>
+<li>[x] §4 extracting + §5 consolidating</li>
+<li>[x] §6 returning + §7 reconstructing</li>
+<li>[x] §8 gaps, what this means, and immediate next steps</li>
+<li>[x] reviewer: verify six-phase coverage and every citation in the pipeline report</li>
+<li>[x] orchestrator: publish the HTML companion and state the immediate next step</li>
+<li>[x] reviewer: independent second read of the constants table and the three load-bearing grep claims (closes the cut-audit gap)</li>
+<li>[x] orchestrator: close the reverse-brief overage as a measured trade (all three engine blocks re-diffed byte-identical)</li>
+<li>[x] editor: deliver runnable self-tested mem0 scoring maths module (mem0_scoring.py)</li>
+<li>[x] editor: deliver the port spec naming exact seams in memory_service_v_2.3.0</li>
+<li>[x] reviewer: verify mem0_scoring.py is faithful to mem0&#x27;s maths (run it, mutate a scratch copy to prove assertions bind, check sigmoid/boost/decay/max-not-sum against source)</li>
+<li>[x] reviewer: verify every port-spec seam resolves in memory_service_v_2.3.0 (sed each cited file:line, confirm the named symbol is there) and that the DO-NOT-PORT claims hold</li>
+<li>[x] orchestrator: apply every reviewer discrepancy to the scoring module and port spec, then re-verify</li>
+</ul>
+<p>15/15 steps complete — all steps complete.</p>
+<p><strong>⚠ goal/plan discrepancy:</strong> plan steps are all complete but the goal status was never confirmed (still &#x27;active&#x27;).</p>
+<h3>To what extent (three counts, none reconciled)</h3>
+<p><em>Three true measurements of &quot;done&quot;. The plan counts the holder&#x27;s own items; the children count closes; the buckets count the steps the children were spawned FOR. They answer different questions, so they are printed side by side and never merged — a disagreement here is a finding, not an error to average away.</em></p>
+<ul>
+<li>plan items complete: <strong>15/15</strong> (the todo holder)</li>
+<li>children closed <code>done</code>: <strong>9/13</strong> (the registry, this session&#x27;s scope)</li>
+<li>children the registry records as NOT delivered: <strong>0/13</strong> — its own recorded field, not re-derived (<code>delivered</code> = <code>none</code>)</li>
+<li>rows where the <code>delivered</code> and <code>status</code> columns disagree: <strong>4/13</strong> — both are the record&#x27;s own fields, and neither one wins here</li>
+</ul>
+<p>| <code>plan_step</code> bucket | children | closed <code>done</code> | tokens (lower bound) |</p>
+<p>|---|---:|---:|---:|</p>
+<p>| <code>reviewer: verify the scoring module is faithful to mem0 and every po…</code> | 2 | 0 | 5,704,682 |</p>
+<p>| <code>editor: §2 recognizing the entities and attributs + §3 injecting the…</code> | 4 | 4 | 4,894,077 |</p>
+<p>| <code>Deliver /reverse brief for the mem0 target: the exact output shrimp.…</code> | 1 | 0 | 4,433,328 |</p>
+<p>| <em>(none recorded — unattributed)</em> | 2 | 2 | 3,562,361 |</p>
+<p>| <code>reviewer: verify six-phase coverage and every citation in the pipeli…</code> | 1 | 0 | 3,129,122 |</p>
+<p>| <code>editor: deliver the port spec naming exact seams in memory_service_v…</code> | 1 | 1 | 1,716,999 |</p>
+<p>| <code>editor: deliver runnable self-tested mem0 scoring maths module (mem0…</code> | 1 | 1 | 418,647 |</p>
+<p>| <code>editor: recognizing, injecting,  extracting,  consolidating, returni…</code> | 1 | 1 | 131,296 |</p>
+<p><em>13 child(ren) in 8 bucket(s). A bucket holding several children was several jobs, which is why one plan line can carry a whole run&#x27;s spend. A child with no <code>plan_step</code> is listed above, never dropped.</em></p>
+<h2>Files touched (audit log)</h2>
+<ul>
+<li><code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/.shrimp/scratch/entity-pipeline-evidence.md</code></li>
+<li><code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/.shrimp/scratch/md2html.py</code></li>
+<li><code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/.shrimp/scratch/splice.py</code></li>
+<li><code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/.shrimp/scratch/template.md</code></li>
+<li><code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/JOURNAL.md</code></li>
+<li><code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/deliverables/mem0-entity-graph-pipeline.md</code></li>
+<li><code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/deliverables/mem0-port-spec.md</code></li>
+<li><code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/deliverables/reverse-brief-mem0.md</code></li>
+<li><code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/mem0_scoring.py</code></li>
+</ul>
+<p><em>Windowed attribution: audit entries with ts ≥ session start. The audit log is shared across sessions — a concurrent run can overlap this window.</em></p>
+<p><strong>Observed on disk, not recorded by the tracker</strong> — a second column, read-only:</p>
+<ul>
+<li><code>DELIVERABLES.md</code> — 984 B (2026-10-26 12:10:05)</li>
+<li><code>deliverables/help-20261026-121028-614.md</code> — 35,611 B (2026-10-26 12:10:29)</li>
+<li><code>.shrimp/harness.log</code> — 1,833 B (2026-10-26 12:10:29)</li>
+<li><code>deliverables/help-summary-20261026-121028-613.html</code> — 5,700 B (2026-10-26 12:10:28)</li>
+<li><code>deliverables/partial-5b0292b0.md</code> — 17,617 B (2026-10-26 12:07:50)</li>
+<li><code>deliverables/mem0-entity-graph-pipeline.html</code> — 110,054 B (2026-10-26 11:33:18)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/events.md</code> — 655,217 B (2026-10-26 12:10:28)</li>
+<li><code>.shrimp/scratch/final-run.txt</code> — 3,344 B (2026-10-26 12:08:29)</li>
+<li><code>.shrimp/scratch/scoring-run.txt</code> — 3,344 B (2026-10-26 11:58:32)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/DRIFT-LEDGER.md</code> — 3,213 B (2026-10-26 11:34:00)</li>
+<li><code>.shrimp/claims/mem0-entity-graph-pipeline.claims.yaml</code> — 9,936 B (2026-10-26 11:32:23)</li>
+<li><code>.shrimp/scratch/fresh3.txt</code> — 3,298 B (2026-10-26 11:24:15)</li>
+<li><code>.shrimp/scratch/fresh2.txt</code> — 2,812 B (2026-10-26 11:24:15)</li>
+<li><code>.shrimp/scratch/fresh1.txt</code> — 2,761 B (2026-10-26 11:21:48)</li>
+<li><code>.shrimp/scratch/o3.txt</code> — 3,298 B (2026-10-26 10:23:58)</li>
+<li><code>.shrimp/scratch/o2.txt</code> — 2,812 B (2026-10-26 10:23:58)</li>
+<li><code>.shrimp/scratch/o1.txt</code> — 2,761 B (2026-10-26 10:23:57)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/139-both-ledger-gaps-are-now-genuinely.md</code> — 2,641 B (2026-10-26 12:10:28)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/138-both-rows-now-carry-evidence-backed.md</code> — 152 B (2026-10-26 12:10:16)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/137-all-clean-46-46-appendix-lines-resolve.md</code> — 189 B (2026-10-26 12:10:11)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/136-now-verifying-the-corrected-spec-end-to.md</code> — 152 B (2026-10-26 12:10:08)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/135-line-264-makes-a-provenance-claim-that-s.md</code> — 189 B (2026-10-26 12:10:05)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/134-line-264-is-the-shorthand-note-itself.md</code> — 148 B (2026-10-26 12:10:02)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/133-all-three-main-py-citations-in-the.md</code> — 193 B (2026-10-26 12:09:58)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/132-the-reviewer-s-finding-12-is-real.md</code> — 204 B (2026-10-26 12:09:56)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/131-two-ledger-rows-still-need-dispositions.md</code> — 251 B (2026-10-26 12:09:54)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/prompts/034-completion-review-2-3-the-turn-was-about.md</code> — 812 B (2026-10-26 12:09:54)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/130-both-gaps-are-closed-with-live-evidence.md</code> — 2,842 B (2026-10-26 12:09:54)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/prompts/033-step-up-tool-batch-268-109m-into-the.md</code> — 961 B (2026-10-26 12:09:15)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/129-structure-is-exactly-as-recorded-only.md</code> — 196 B (2026-10-26 12:09:14)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/128-html-is-110-054-bytes-not-the-109-519-i.md</code> — 174 B (2026-10-26 12:09:12)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/127-both-gaps-are-now-closed-on-the-record.md</code> — 164 B (2026-10-26 12:09:09)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/126-now-closing-the-two-cut-units-on-the.md</code> — 134 B (2026-10-26 12:09:06)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/125-all-three-engine-blocks-confirmed.md</code> — 199 B (2026-10-26 12:09:04)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/124-let-me-do-a-strict-byte-level.md</code> — 141 B (2026-10-26 12:08:53)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/123-re-running-the-engine-to-prove-the-three.md</code> — 155 B (2026-10-26 12:08:49)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/122-the-4ba3a3a4-gap-is-already-closed-by.md</code> — 187 B (2026-10-26 12:08:46)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/prompts/032-step-up-tool-batch-258-108m-into-the.md</code> — 961 B (2026-10-26 12:08:44)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/121-two-completion-review-gaps-remain-to.md</code> — 157 B (2026-10-26 12:08:44)</li>
+<li><code>sessions/session-613330-bb649e96d4d44b22/answers/120-the-validator-requires-splitting-that.md</code> — 171 B (2026-10-26 12:08:41)</li>
+<li>… and <strong>260 more</strong> not listed here</li>
+</ul>
+<p><em>300 file(s) in the working tree changed at or after this session&#x27;s start that the audit log above does not list, out of 313 file(s) walked (<code>.git, .hg, .mypy_cache, .pytest_cache, .ruff_cache, .svn…</code> and other caches are not walked). The tracker is built from successful <code>write</code>/<code>edit</code> tool calls, so anything a shell command produced is invisible to it — the run this column was built from wrote both of its review deliverables with <code>bash</code> heredocs and listed neither. This is OBSERVATION ONLY: it never feeds <code>delivered</code>, the audit log or any gate, and it is printed precisely so the two answers can be compared rather than merged.</em></p>
+<h2>Detached subagents</h2>
+<h3>reviewer (port-verify-final) — done_cut (id=74e6ffc1)</h3>
+<p>Report for the parent.</p>
+<h2>What I did</h2>
+<p>A read-only verification pass over <code>mem0_scoring.py</code> (931 lines) and <code>deliverables/mem0-port-spec.md</code> (273 lines), checking the five corrections and closing the three items the prior audit left UNEVIDENCED. No artefact was modified. Every claim below was opened with <code>sed -n</code>/<code>awk</code> in this pass; scratch mutants lived in <code>.shrimp/scratch/verify-5b0292b0/</code> and have been deleted.</p>
+<h2>What I wrote</h2>
+<p>`/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/deliverables/partial-5b…</p>
+<h3>reviewer (port-verify) — blocked (id=59b96bbe)</h3>
+<p>[harness] THIS CHILD HIT A HARD BOUND — the close marker below is authoritative. If it reads <code>done</code>, read the report; anything else is a CUT: re-spawn for the remainder, or do it inline. (max_turns=65)</p>
+<p>REPORT</p>
+<p>What I did: read-only audit of artefact A (<code>mmemz/mem0_scoring.py</code>) and artefact B (<code>mmemz/deliverables/mem0-port-spec.md</code>) against mem0 upstream and the target repo. Nothing in <code>memory_service_v_2.3.0</code> or either artefact was modified.</p>
+<p>Files written: one — `.shrimp/contexts/goal-extract-m…</p>
+<h3>editor (mem0-port-spec) — done (id=2f449c44)</h3>
+<p>Written: <code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/deliverables/mem0-port-spec.md</code> (265 lines, 24.9 KB).</p>
+<h2>What the spec says</h2>
+<p><strong>Headline (the real prize).</strong> The gap is a missing *cap*, not a missing graph. <code>_initial_ranking</code> (<code>agentmem/memory_retrieval.py:724</code>) accumulates <code>entity_relevance</code> as an unbounded <code>+=</code> over <code>cand[&quot;linked_entities&quot;]</code> (<code>:779-780</code>) and then <strong>multiplies</strong> it by cosine similarity at <code>:797</code>. So a memory linked to <code>n</code> entities gets up to <code>n × max(entity_score)</code> as a multip…</p>
+<h3>editor (mem0-scoring-module) — done (id=685c2e58)</h3>
+<p>Delivered: <strong><code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/mem0_scoring.py</code></strong> (886 lines, 38 KB, stdlib only: <code>math</code>, <code>typing</code>, <code>__future__</code>).</p>
+<p><strong>Contents</strong> — pure functions, full type hints, anchor <code># anchor: 92f3a80b</code> at line 4, no mem0 imports, no TODO stubs left:</p>
+<p>| § | What | Provenance carried |</p>
+<p>|---|---|---|</p>
+<p>| 1 | <code>memory_count_weight</code> — <code>1/(1+0.001*(n-1)**2)</code>, <code>max(n,1)</code> floor | <code>main.py:1815-1817</code>, <code>3493-3495</code> |</p>
+<p>| 2 | <code>BM25_PARAM_TABLE</code> + <code>get_bm25_params</code> / <code>bm25_confidence</code> / `normalize_bm…</p>
+<h3>reviewer (second-reader-constants) — done (id=4a466e0b)</h3>
+<h2>Second-reader verification — <code>mem0-entity-graph-pipeline.md</code></h2>
+<p>All commands run with <code>cwd=/home/mmonk/Downloads/mem0-main(3)/mem0-main</code>, against <code>mem0/memory/main.py</code> (3912 lines), <code>mem0/utils/scoring.py</code> (139 lines), <code>mem0/configs/base.py</code>, <code>mem0/configs/prompts.py</code>, <code>mem0/memory/utils.py</code>. Note: the claim registry re-checks relative paths from the *work-unit* cwd, so it reports <code>cannot_reconfirm</code>; every command below was run inside the repo and its output is quoted.</p>
+<h3>DISCREPANCIES</h3>
+<p>1. **…</p>
+<h3>reviewer (audit-remainder) — done (id=8b6082fb)</h3>
+<h2>Discrepancies</h2>
+<p><strong>1. §5 deletion-caller citation is wrong on both functions</strong> — <code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/deliverables/mem0-entity-graph-pipeline.md:492</code></p>
+<ul>
+<li>report says: &quot;It is called from <code>delete</code> (<code>2109</code>, <code>2140</code>) and <code>reset</code> (<code>2166-2171</code>, <code>2210</code>); async twins at <code>3829</code> / <code>3861</code>.&quot;</li>
+<li>source says: at 2109 the call is inside <code>_update_memory</code> (def <code>main.py:2052</code>); at 2140 inside <code>_delete_memory</code> (def <code>main.py:2114</code>); never inside <code>reset</code> (def <code>main.py:2144</code>), which calls `self._enti…</li>
+</ul>
+<h3>reviewer (pipeline-audit) — blocked (id=5785e990)</h3>
+<p>[harness] THIS CHILD HIT A HARD BOUND — the close marker below is authoritative. If it reads <code>done</code>, read the report; anything else is a CUT: re-spawn for the remainder, or do it inline. (max_turns=60)</p>
+<p>AUDIT REPORT — read-only, no source file edited.</p>
+<p>Wrote: <code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/.shrimp/contexts/goal-clarify-what-kind-of-help-the-user-ad1580e3/c277792b/artifacts/partial-c277792b.md</code> (151 lines, anchor <code>c277792b</code>) — carries all ten findings below with commands + verbatim outpu…</p>
+<h3>editor (pipeline-s8) — done (id=b5166567)</h3>
+<p>§8 is written and the anchor is gone.</p>
+<p><strong>What I did</strong></p>
+<p>Replaced the single <code>&lt;!-- ANCHOR: §8 --&gt;</code> line (line 926, end of file) with the closing section — four subsections, file now 1006 lines. §1–§7 untouched: line 925 still ends on §7&#x27;s &quot;it is not a feature&quot; paragraph.</p>
+<ul>
+<li><strong><code>### Gaps</code></strong> — five-row Gap/Consequence/Where-the-code-decides-it table. Each row cites the deciding line and cross-references the section that already covered it (row 4 points at §6&#x27;s constants table rather than re-enumerati…</li>
+</ul>
+<h3>editor (pipeline-s6s7) — done (id=beaa3de8)</h3>
+<p>Done. §6 and §7 are written, both anchors are gone, and the file is otherwise byte-identical to what I found.</p>
+<h2>What I changed</h2>
+<p>Two <code>edit</code>-style insertions replacing the literal anchor lines, at <code>deliverables/mem0-entity-graph-pipeline.md</code>. Nothing in §1–§5 was touched (I only added the blank line that separates §5&#x27;s last bullet from the new §6 heading, matching the spacing every other section uses), and <code>&lt;!-- ANCHOR: §8 --&gt;</code> is untouched at line 926.</p>
+<p>**§6 — &quot;Returning the entities and attrib…</p>
+<h3>editor (pipeline-s4s5) — done (id=898b0e5d)</h3>
+<p>Both sections written and verified.</p>
+<h2>What I did</h2>
+<p><strong>§4 &quot;Extracting memories and attributes&quot;</strong> (<code>mem0-entity-graph-pipeline.md:246-428</code>) — 8-phase table for <code>_add_to_vector_store</code> marking Phase 2 as the sole LLM call (<code>main.py:958</code>, the only <code>self.llm.</code> under 881-1230); prompt-pair table (<code>ADDITIVE_EXTRACTION_PROMPT</code> <code>prompts.py:468</code>, <code>AGENT_CONTEXT_SUFFIX</code> <code>947</code> selected <code>main.py:944-946</code>, user prompt sections <code>1036-1045</code>); output-contract table with the four fields, naming <code>attributed_to</code> as …</p>
+<h3>editor (pipeline-s2s3) — done (id=c7ae0908)</h3>
+<p>Both anchors replaced; §4–§8 untouched and still on consecutive lines at the file end.</p>
+<p><strong>What I wrote</strong></p>
+<ul>
+<li><strong>§2 Recognizing the entities and attributes</strong> (now <code>mem0-entity-graph-pipeline.md:42-127</code>) — spaCy-only recognition with no LLM call (<code>entity_extraction.py:751-758</code>), the two <code>[]</code> degradation paths, model loading table (<code>spacy_models.py:44/60</code>, <code>69/85</code>) plus the optional <code>nlp</code> extra (<code>pyproject.toml:28-30</code>); the 4-types/5-generators table (<code>498</code> PROPER, <code>528</code> IDENTIFIER, <code>543</code> PROPER, `58…</li>
+</ul>
+<h3>editor (pipeline-scaffold) — done (id=7382a8b3)</h3>
+<p>Scaffold is on disk and verified.</p>
+<p><strong>What I wrote</strong> — <code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/deliverables/mem0-entity-graph-pipeline.md</code> (48 lines):</p>
+<p>1. <strong>Anchor + title block</strong> — <code>anchor: 0ff8a161</code>, repo <code>/home/mmonk/Downloads/mem0-main(3)/mem0-main</code>, <code>mem0ai</code> v2.2.1, 2026-10-26, scope, evidence base.</p>
+<p>2. <strong>Orientation paragraph</strong> — OSS has no graph DB; the graph is a second vector collection of entity rows whose payload carries <code>linked_memory_ids</code>.</p>
+<p>3. <strong>Six-row phase table</strong> — phase column in…</p>
+<h3>editor (reverse-brief-mem0) — done_cut (id=6e84eb69)</h3>
+<h2>What I did</h2>
+<p>Wrote and verified <code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/deliverables/reverse-brief-mem0.md</code> — the <code>/reverse</code> brief for the mem0 v2.2.1 tree at <code>/home/mmonk/Downloads/mem0-main(3)/mem0-main</code>.</p>
+<p><strong>Structure:</strong> it opens on line 7 with the literal line the user must type in the shrimp REPL (<code>/reverse /home/mmonk/Downloads/mem0-main(3)/mem0-main/mem0/memory/main.py</code>) — no preamble — then: the verdict (<code>.py</code> → <code>unknown</code>, wrong instrument, finding not error), §1 the three verbatim eng…</p>
+<h3>What the children delivered (CB-8)</h3>
+<p><em>Rates, not statuses — a close status cannot see yield. <code>incomplete</code> is the only status a token-cut child can have (the cut pre-empts its <code>STATUS:</code> line), so reading it as failure scores a run&#x27;s most valuable cut child as a loss.</em></p>
+<ul>
+<li>children spawned: <strong>13</strong> — this session&#x27;s registry records, <strong>not</strong> the windowed listing above (a <code>--resume</code> chain&#x27;s earlier children are this run&#x27;s too)</li>
+<li>clean closes (<code>done</code>): <strong>9/13 — 69.2%</strong></li>
+<li>cut at a bound: <strong>2/13 — 15.4%</strong> (<code>done_cut</code> 2)</li>
+</ul>
+<p>  (<code>done_cut</code> 2 closed cleanly AFTER the harness cut it, so its deliverable is PARTIAL — it is counted as cut above and never folded into the clean-close rate.)</p>
+<ul>
+<li>ended for another reason: <strong>2</strong> (<code>blocked</code> 2) — not cut at a bound</li>
+<li><strong>yield among the 2 cut children: 2/2 — 100.0%</strong></li>
+</ul>
+<p>  <em>Derived from the record, never from <code>status</code>: the child streamed assistant text of its own that the harness saved (<code>partial-turn.md</code>) and handed to the parent with the cut notice. A child cut before its first write leaves none — the parent receives the notice and nothing else. That is the low end of yield, not the whole of it: whether the parent then ACTED on the output is not attributable per child from these records, so it is published separately below rather than folded in.</em></p>
+<ul>
+<li><strong>declared deliverables: 13 — <code>file</code> 8 · <code>message</code> 5 · arrived 13/13</strong></li>
+</ul>
+<p>  <em>Each spawn is scored against the acceptance criterion its OWN brief declared: a <code>deliverable: message</code> child is scored by its closing text, a <code>deliverable: file</code> child by the files it wrote. <code>files_written</code> answers the second and is MEANINGLESS for the first — a message child that delivered a complete report and wrote no file is not an empty child. A spawn that declared no deliverable is not scored here at all.</em></p>
+<h3>Child token bounds (FIX-7)</h3>
+<ul>
+<li>session net <code>defaults.child_max_tokens</code>: <strong>800,000</strong> — the default a child gets when its caller declares no bound.</li>
+<li>2 children bounded at <strong>800,000</strong> — the shape&#x27;s rung: shape <code>audit</code> (rung 800,000)</li>
+<li>2 children bounded at <strong>400,000</strong> — the shape&#x27;s rung: shape <code>document-scaffold</code> (rung 400,000)</li>
+<li>5 children bounded at <strong>250,000</strong> — the shape&#x27;s rung: shape <code>section</code> (rung 250,000)</li>
+<li>4 children bounded at <strong>200,000</strong> — the shape&#x27;s rung: shape <code>fix</code> (rung 200,000)</li>
+<li><strong>11/13 ran BELOW the net</strong> — the knob did not bound them. That is legitimate (a caller more conservative than the operator, or a shape whose rung is below the net) and this run is where it should be VISIBLE rather than silent: raising <code>child_max_tokens</code> changes no such child.</li>
+</ul>
+<h2>Consumption (measured)</h2>
+<ul>
+<li>turns (orchestrator assistant messages): <strong>285</strong></li>
+<li>input tokens: <strong>38671089</strong></li>
+<li>output tokens: <strong>1121324</strong></li>
+<li>cache read / creation: 35560704 / 0</li>
+<li>total tokens: <strong>39792413</strong></li>
+</ul>
+<p><em>Coverage: the orchestrator&#x27;s loop + in-turn (blocking) subagent calls, measured from the provider&#x27;s usage events; detached-subagent spend (when present) is the separate line above. A provider that reports no usage counts as zero.</em></p>
+<p><strong>Who spent it</strong> (D-5 — the parent&#x27;s own work, the children it was blocked on, and the children that ran outside its loop):</p>
+<ul>
+<li>parent&#x27;s own: <strong>15,801,901</strong> (in 15,569,518 · out 232,383) — <code>exact</code> as a fold</li>
+<li>blocking children (folded into the parent&#x27;s counter): <strong>23,990,512</strong> — <code>exact</code> as a fold</li>
+<li>detached children (outside the parent&#x27;s counter entirely): <strong>0</strong> — <code>exact</code> per child</li>
+<li>session total: <strong>39,792,413</strong> — children are <strong>60.3%</strong> of it — <code>lower bound</code></li>
+<li>the <code>turn_end</code> victory line prints <strong>39,792,413</strong> — it reads <code>env.usage_totals</code> (parent + blocking), so it omits the detached <strong>0</strong> (0.0% of the run) entirely. A difference between that line and this section is THIS gap, not a measurement error in either.</li>
+</ul>
+<p><em>Provenance kinds: <code>exact</code> (a value the record states outright), <code>derived</code> (recomputed here from ≥2 records), <code>lower bound</code> (any token TOTAL — a child&#x27;s cap crossing is detected at turn top, so a crossing on its closing turn is never charged, `<code>core/loop.py</code><code>; the true figure is higher), </code>stale` (a recorded measurement whose file changed underneath it).</em></p>
+<ul>
+<li><code>measurement_stale</code> notes in this session: <strong>82</strong> — a recorded measurement whose file changed underneath it, so it no longer describes that file as it is now. Each is named in the session&#x27;s own record (kind <code>measurement_stale</code>); re-measure one before quoting it, and read any figure above drawn from one as <code>stale</code>.</li>
+</ul>
+<p><em>A blocked child is billed to a parent turn counter that does not move, so <code>turns</code> above is not a spend proxy (run 175303: 324 <code>usage</code> rows against 324 turns, with a 3.4M-token blocking child on a turn count that never changed).</em></p>
+<p><em>How to read a <code>usage</code> entry in the session jsonl (the numbers above come from these rows; summing them naively over-counts by a factor set by how many are child folds — 48% on one measured run):</em></p>
+<ul>
+<li><code>totals</code> is a <strong>cumulative session-wide snapshot</strong>, not an increment — <code>cumulative: true</code> says so on the row. The session total is the LAST snapshot; a per-call cost is the DELTA between two rows.</li>
+<li><code>owner</code> names <strong>whose</strong> spend moved that snapshot: <code>orchestrator</code>, or <code>child:&lt;alias|role&gt;</code> for a blocking child folded into the same counter.</li>
+<li><code>child</code> is the legacy boolean form of the same fact (<code>owner != &quot;orchestrator&quot;</code>); it is derived, never set independently.</li>
+<li>a <strong>detached</strong> child&#x27;s spend is not in these rows at all — it lives per child in the subagent registry, so any total read from <code>usage</code> rows under-reports the run while children are running.</li>
+</ul>
+<h2>Final assistant message</h2>
+<p>Both ledger gaps are now genuinely closed — not annotated, but resolved by measuring the residual items against disk.</p>
+<h2>What I did this round</h2>
+<p>The two rows weren&#x27;t bookkeeping noise; <code>5b0292b0</code> had named five concrete defects it found but couldn&#x27;t verify before its bound. I closed each one:</p>
+<p>| # | Finding | Measured fix |</p>
+<p>|---|---|---|</p>
+<p>| 9 | <code>expand_reachable</code> wrongly wired to <code>_select_entities:414</code> | <code>grep</code> = <strong>0</strong> refs in <code>memory_retrieval.py</code>; callers are <code>service.py:5637</code>, <code>graph_qa.py:534</code>; <code>:414</code> gates <strong>PPR</strong> at <code>:571</code> — spec rewritten |</p>
+<p>| 10 | stale <code>ALL 62 CHECKS</code> | → <strong>65</strong>; <code>grep -c &#x27;62 CHECKS&#x27;</code> = <strong>0</strong> |</p>
+<p>| 11 | appendix &quot;every file:line&quot; overclaim | Header narrowed to a true claim, 10 lines added → <strong>46/46 resolve, 0 problems</strong> |</p>
+<p>| 12 | ambiguous <code>prompts.py</code> path | → <code>mem0/configs/prompts.py:406</code>/<code>:176</code>; bare occurrences = <strong>0</strong> |</p>
+<p>| 13 | <code>_normalize</code>-at-<code>:41</code> rule | Moot — no <code>_normalize</code> in the spec |</p>
+<p>| 14 | <code>main.py:586/610/1762</code> unopened | Opened directly: <code>def _existing_entities_by_text</code>, the exact-match line, <code>_normalize_entity_text</code> key — <strong>all correct</strong> |</p>
+<p>I also independently confirmed <strong>ADD-only consolidation</strong>: <code>get_update_memory_messages</code> (<code>mem0/configs/prompts.py:406</code>) has <strong>no non-test caller</strong> anywhere in the mem0 tree — so mem0 really does store a revised fact as a new row beside the old one.</p>
+<h2>Final state</h2>
+<p>| Artefact | Verified |</p>
+<p>|---|---|</p>
+<p>| <code>deliverables/mem0-entity-graph-pipeline.md</code> | 1,021 lines, 10 <code>##</code>, 16 corrections across two audits |</p>
+<p>| <code>deliverables/mem0-entity-graph-pipeline.html</code> | 110,054 B, 0 remote refs, 1 h1/10 h2/11 sections/25 tables/20 <code>&lt;pre&gt;</code> |</p>
+<p>| <code>mem0_scoring.py</code> | 931 lines, <strong>65 checks rc=0</strong>, <code>py_compile</code> rc=0, 3 mutants each killed by its own label |</p>
+<p>| <code>deliverables/mem0-port-spec.md</code> | 292 lines, <strong>46/46</strong> citations resolve |</p>
+<p>No open ledger rows, no open plan items.</p>
+<h2>Your next step, unchanged</h2>
+<p>One ~11-line change in <code>agentmem/memory_retrieval.py:778-780</code>: swap the additive <code>entity_relevance</code> sum for mem0&#x27;s bounded max-of-weighted-links plus <code>1/(1+0.001·(n-1)²)</code> decay, behind <code>entity_relevance_cap</code> defaulting <strong>off</strong> — mirroring <code>entity_hub_penalty</code> at <code>:536</code> so rollback is a config flip.</p>
+<p>Two things worth knowing before you start: the sum is <strong>bounded at ~24.0</strong>, not unbounded (my original headline was wrong; the real defect is the missing per-memory normalisation and per-link dampener). And <code>_hybrid_fuse</code> only runs when <code>hybrid_rrf_enabled</code> is true — default <strong><code>False</code></strong> at <code>memserver/config/legacy.py:517</code> — so your BM25 arm is latent, a separate decision.</p>
+<h2>Completion review</h2>
+<ul>
+<li>reviews: <strong>3</strong> (gaps: 2, passed: 1; a <code>gaps</code> row is one round the gate REFUSED — 2 refusals)</li>
+<li>final verdict: <strong>passed</strong> — the closing claim was accepted</li>
+</ul>
+<p><em>the gate&#x27;s own words, last review (verbatim):</em></p>
+<blockquote>passed: 0 gap(s)</blockquote>
+<h2>Conclusion</h2>
+<h3>What this run produced (harness-measured)</h3>
+<p><em>Every figure below is derived by the harness from this session&#x27;s own records (goal holder, todo holder, audit log, subagent registry, usage totals). None of it is taken from the model&#x27;s closing message.</em></p>
+<ul>
+<li>goal: Goal: Extract mem0 v2.2.1&#x27;s maths and code for its entity/attribute memory strategies (recognizing → injecting → extracting → consolidating → returning entities/attributes → reconstructing memories from graph paths) so the user can REUSE them into their own Agentic graph context — the existing service at /home/mmonk/Downloads/LSTM_VS_LLM/memory_service_v_2.3.0 — to build a new version of their graph content memory service under /home/mmonk/Downloads/LSTM_VS_LLM/mmemz. Two parts: (a) the source-level six-phase report with file:line evidence, DONE and audited at mmemz/deliverables/mem0-entity-graph-pipeline.md; (b) the extraction itself — runnable, self-tested scoring maths in mmemz plus a port spec naming the exact seam in the user&#x27;s repo (agentmem/memory_retrieval.py, agentmem/vecops.py, agentmem/models.py, v3/) for each piece, and stating what NOT to port because the target is already ahead (multi-hop expand_reachable in agentmem/graph_walk.py vs mem0&#x27;s single hop). — status: <strong>active</strong> (model/host-authored via the goal tool)</li>
+<li>plan end-state: <strong>15/15 steps complete</strong> — all steps complete.</li>
+<li>files written: <strong>9</strong> — <code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/.shrimp/scratch/entity-pipeline-evidence.md</code>, <code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/.shrimp/scratch/md2html.py</code>, <code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/.shrimp/scratch/splice.py</code>, <code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/.shrimp/scratch/template.md</code>, <code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/JOURNAL.md</code>, <code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/deliverables/mem0-entity-graph-pipeline.md</code>, <code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/deliverables/mem0-port-spec.md</code>, <code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/deliverables/reverse-brief-mem0.md</code>, <code>/home/mmonk/Downloads/LSTM_VS_LLM/mmemz/mem0_scoring.py</code></li>
+<li>working tree: <em>not a git work tree (or git unavailable) — no measured figure</em></li>
+<li>worktree: <em>not a git work tree (or git unavailable) — no measured figure</em></li>
+<li>detached subagents: <strong>13</strong> total — blocked: 2, done: 9, done_cut: 2 (a status tally, not a rate — see “What the children delivered” above)</li>
+</ul>
+<p>  (<code>incomplete</code> = cut at the child&#x27;s hard bound — the P2 status; <code>done_cut</code> = the child closed cleanly anyway, so the report is PARTIAL — never read it as a finished deliverable; <code>stalled</code> = killed by the forward-progress watchdog.)</p>
+<ul>
+<li>measured spend (orchestrator): turns <strong>285</strong> · in <strong>38671089</strong> / out <strong>1121324</strong> / total <strong>39792413</strong> tokens</li>
+<li>measured spend (detached subagents): <strong>0</strong> tokens recorded (none ran, or the provider reported no usage)</li>
+<li>⚠ goal/plan mismatch: plan steps are all complete but the goal status was never confirmed (still &#x27;active&#x27;)</li>
+</ul>
+<h3>Claims re-derived at close (CB-12)</h3>
+<ul>
+<li><strong>No stale claims.</strong> Every sentence naming an item that closed DONE this run was re-derived against the tree across 6 deliverable(s).</li>
+</ul>
+<h3>The model&#x27;s own claim (self-report — NOT verified by the harness)</h3>
+<p><em>The blockquote below is the model&#x27;s final assistant message, reproduced verbatim. It is the model&#x27;s own claim about what it did — not a harness measurement and not evidence; nothing in it has been checked against the records above.</em></p>
+<blockquote>Both ledger gaps are now genuinely closed — not annotated, but resolved by measuring the residual items against disk.</blockquote>
+<blockquote>## What I did this round</blockquote>
+<blockquote>The two rows weren&#x27;t bookkeeping noise; <code>5b0292b0</code> had named five concrete defects it found but couldn&#x27;t verify before its bound. I closed each one:</blockquote>
+<blockquote>| # | Finding | Measured fix |<br>|---|---|---|<br>| 9 | <code>expand_reachable</code> wrongly wired to <code>_select_entities:414</code> | <code>grep</code> = <strong>0</strong> refs in <code>memory_retrieval.py</code>; callers are <code>service.py:5637</code>, <code>graph_qa.py:534</code>; <code>:414</code> gates <strong>PPR</strong> at <code>:571</code> — spec rewritten |<br>| 10 | stale <code>ALL 62 CHECKS</code> | → <strong>65</strong>; <code>grep -c &#x27;62 CHECKS&#x27;</code> = <strong>0</strong> |<br>| 11 | appendix &quot;every file:line&quot; overclaim | Header narrowed to a true claim, 10 lines added → <strong>46/46 resolve, 0 problems</strong> |<br>| 12 | ambiguous <code>prompts.py</code> path | → <code>mem0/configs/prompts.py:406</code>/<code>:176</code>; bare occurrences = <strong>0</strong> |<br>| 13 | <code>_normalize</code>-at-<code>:41</code> rule | Moot — no <code>_normalize</code> in the spec |<br>| 14 | <code>main.py:586/610/1762</code> unopened | Opened directly: <code>def _existing_entities_by_text</code>, the exact-match line, <code>_normalize_entity_text</code> key — <strong>all correct</strong> |</blockquote>
+<blockquote>I also independently confirmed <strong>ADD-only consolidation</strong>: <code>get_update_memory_messages</code> (<code>mem0/configs/prompts.py:406</code>) has <strong>no non-test caller</strong> anywhere in the mem0 tree — so mem0 really does store a revised fact as a new row beside the old one.</blockquote>
+<blockquote>## Final state</blockquote>
+<blockquote>| Artefact | Verified |<br>|---|---|<br>| <code>deliverables/mem0-entity-graph-pipeline.md</code> | 1,021 lines, 10 <code>##</code>, 16 corrections across two audits |<br>| <code>deliverables/mem0-entity-graph-pipeline.html</code> | 110,054 B, 0 remote refs, 1 h1/10 h2/11 sections/25 tables/20 <code>&lt;pre&gt;</code> |<br>| <code>mem0_scoring.py</code> | 931 lines, <strong>65 checks rc=0</strong>, <code>py_compile</code> rc=0, 3 mutants each killed by its own label |<br>| <code>deliverables/mem0-port-spec.md</code> | 292 lines, <strong>46/46</strong> citations resolve |</blockquote>
+<blockquote>No open ledger rows, no open plan items.</blockquote>
+<blockquote>## Your next step, unchanged</blockquote>
+<blockquote>One ~11-line change in <code>agentmem/memory_retrieval.py:778-780</code>: swap the additive <code>entity_relevance</code> sum for mem0&#x27;s bounded max-of-weighted-links plus <code>1/(1+0.001·(n-1)²)</code> decay, behind <code>entity_relevance_cap</code> defaulting <strong>off</strong> — mirroring <code>entity_hub_penalty</code> at <code>:536</code> so rollback is a config flip.</blockquote>
+<blockquote>Two things worth knowing before you start: the sum is <strong>bounded at ~24.0</strong>, not unbounded (my original headline was wrong; the real defect is the missing per-memory normalisation and per-link dampener). And <code>_hybrid_fuse</code> only runs when <code>hybrid_rrf_enabled</code> is true — default <strong><code>False</code></strong> at <code>memserver/config/legacy.py:517</code> — so your BM25 arm is latent, a separate decision.</blockquote>
+</main>
+</body>
+</html>

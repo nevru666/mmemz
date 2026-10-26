@@ -1,0 +1,37 @@
+# Deliverables from this run
+
+Named deliverables go in the harness-pinned dir: /home/mmonk/Downloads/LSTM_VS_LLM/mmemz/deliverables
+(an exact path the task names wins for that deliverable).
+
+## Files written this session (via the fs write/edit tools)
+
+- [wrote+edited] deliverables/reverse-brief-mem0.md (first 2026-10-26 10:24, updated 10:33)
+- [wrote] .shrimp/scratch/splice.py (first 2026-10-26 10:25, updated 10:26)
+- [wrote] .shrimp/scratch/template.md (first 2026-10-26 10:26, updated 10:27)
+- [wrote] .shrimp/scratch/entity-pipeline-evidence.md (first 2026-10-26 10:36)
+- [edited] JOURNAL.md (first 2026-10-26 10:41, updated 10:45)
+- [wrote+edited] deliverables/mem0-entity-graph-pipeline.md (first 2026-10-26 10:42, updated 11:33)
+- [wrote+edited] .shrimp/scratch/md2html.py (first 2026-10-26 11:10, updated 11:11)
+- [wrote+edited] mem0_scoring.py (first 2026-10-26 11:34, updated 11:58)
+- [wrote+edited] deliverables/mem0-port-spec.md (first 2026-10-26 11:36, updated 13:00)
+- [wrote+edited] mmemz_entity_boost_patch.py (first 2026-10-26 12:57, updated 13:01)
+- [wrote] pyproject.toml (first 2026-10-26 14:01)
+- [wrote] mmemz/__init__.py (first 2026-10-26 14:01)
+- [wrote] mmemz/py.typed (first 2026-10-26 14:01)
+- [wrote+edited] .gitignore (first 2026-10-26 14:01, updated 14:26)
+- [wrote+edited] README.md (first 2026-10-26 14:01, updated 14:01)
+- [wrote+edited] CHANGELOG.md (first 2026-10-26 14:01, updated 14:01)
+- [wrote+edited] mmemz/scoring.py (first 2026-10-26 14:03, updated 14:04)
+- [wrote+edited] mmemz/bm25.py (first 2026-10-26 14:03, updated 14:04)
+- [wrote+edited] mmemz/entities.py (first 2026-10-26 14:03, updated 14:12)
+- [wrote] tests/test_scoring.py (first 2026-10-26 14:06)
+- [wrote] tests/test_bm25.py (first 2026-10-26 14:06)
+- [wrote+edited] tests/test_entities.py (first 2026-10-26 14:06, updated 14:09)
+- [edited] _mutcheck/pkg/mmemz/scoring.py (first 2026-10-26 14:09, updated 14:10)
+- [wrote] .shrimp/contexts/goal-extract-mem0-v2-2-1-s-maths-and-cod-ad1580e3/030dcbd3/artifacts/mutation-report.md (first 2026-10-26 14:10)
+- [wrote+edited] mmemz/vecops.py (first 2026-10-26 14:12, updated 14:24)
+- [wrote] mmemz/graph_walk.py (first 2026-10-26 14:13)
+- [wrote+edited] mmemz/graph.py (first 2026-10-26 14:13, updated 14:14)
+- [wrote+edited] mmemz/service.py (first 2026-10-26 14:14, updated 14:21)
+- [wrote+edited] tests/test_graph.py (first 2026-10-26 14:15, updated 14:15)
+- [wrote+edited] tests/test_service.py (first 2026-10-26 14:16, updated 14:21)

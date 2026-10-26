@@ -1,0 +1,57 @@
+#
+# mmemz — packaging skeleton.
+#
+# WHY ZERO THIRD-PARTY RUNTIME DEPENDENCIES
+# -----------------------------------------
+# `dependencies = []` below is a deliberate design decision, not an oversight.
+#
+# 1. mmemz vendors the target's stdlib-only `graph_walk.py` and `vecops.py`.
+#    Those modules were written against the standard library alone, so the
+#    vendored copies carry no import cost of their own.
+# 2. The whole point of this package is to be DROPPABLE INTO
+#    /home/mmonk/Downloads/LSTM_VS_LLM/memory_service_v_2.3.0 without fighting
+#    that repo's pinned dependency set. That tree already pins fastapi,
+#    pydantic, qdrant-client, networkx, scipy and numpy. If mmemz declared its
+#    own runtime requirements, installing it beside that tree would either
+#    re-resolve those pins or drag in a second, conflicting generation of them
+#    — and the entity/attribute maths does not need any of it.
+# 3. The original mem0 maths that mmemz extracts uses only `math` and `json`
+#    from the standard library. Anything that maths needs can be written in
+#    pure Python; anything that would need a numeric stack belongs in the
+#    host service, not here.
+#
+# The consequence: mmemz must stay importable on a bare CPython >= 3.10 with
+# an empty site-packages. Any future dependency addition needs to argue
+# against the two source trees, not just against convenience.
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mmemz"
+version = "0.1.0"
+description = "A new version of the graph content memory service: mem0 v2.2.1 entity/attribute memory maths grounded in memory_service_v_2.3.0's proven structures."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "mmonk" }]
+keywords = ["memory", "graph", "entity", "bm25", "llm", "mem0"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
+]
+# Stdlib only. See the rationale block at the top of this file.
+dependencies = []
+
+[tool.setuptools]
+packages = ["mmemz"]
+
+[tool.setuptools.package-data]
+mmemz = ["py.typed"]

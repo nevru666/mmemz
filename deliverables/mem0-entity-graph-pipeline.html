@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mem0's entity / attribute / graph pipeline — recognizing, injecting, extracting, consolidating, returning, reconstructing</title>
+<style>
+:root{--fg:#1a1a1a;--bg:#fff;--muted:#555;--line:#ddd;--accent:#0b5fa5;--code:#f4f5f7;}
+@media (prefers-color-scheme:dark){
+  :root{--fg:#e8e8e8;--bg:#16181d;--muted:#a0a4ad;--line:#33383f;--accent:#6fb3ee;--code:#1e2129;}
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;padding:2.5rem 1.25rem 5rem;background:var(--bg);color:var(--fg);
+  font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+main{max-width:78ch;margin:0 auto}
+h1{font-size:1.9rem;line-height:1.25;margin:0 0 .5rem;letter-spacing:-.01em}
+h2{font-size:1.35rem;margin:3rem 0 .85rem;padding-top:1.5rem;border-top:1px solid var(--line);line-height:1.3}
+h3{font-size:1.08rem;margin:2rem 0 .6rem;line-height:1.35}
+h4{font-size:.98rem;margin:1.5rem 0 .5rem}
+p{margin:.85rem 0}
+ul,ol{margin:.85rem 0;padding-left:1.4rem}
+li{margin:.3rem 0}
+a{color:var(--accent)}
+code{background:var(--code);padding:.13em .35em;border-radius:4px;
+  font:.87em/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
+pre{background:var(--code);padding:1rem 1.1rem;border-radius:7px;overflow-x:auto;
+  border:1px solid var(--line);margin:1rem 0}
+pre code{background:none;padding:0;font-size:.84rem;line-height:1.55;white-space:pre}
+blockquote{margin:1rem 0;padding:.6rem 1.1rem;border-left:3px solid var(--accent);
+  color:var(--muted);background:var(--code);border-radius:0 6px 6px 0}
+blockquote p{margin:.35rem 0}
+table{border-collapse:collapse;width:100%;margin:1.25rem 0;font-size:.9rem;display:block;overflow-x:auto}
+thead th{background:var(--code);font-weight:600}
+th,td{border:1px solid var(--line);padding:.5rem .65rem;text-align:left;vertical-align:top}
+tbody tr:nth-child(even){background:color-mix(in srgb,var(--code) 55%,transparent)}
+header.meta{margin:0 0 2.5rem;padding-bottom:1.25rem;border-bottom:2px solid var(--line)}
+header.meta .sub{color:var(--muted);font-size:.9rem;margin:.2rem 0 0}
+header.meta dl{display:grid;grid-template-columns:max-content 1fr;gap:.25rem 1rem;
+  margin:1rem 0 0;font-size:.87rem;color:var(--muted)}
+header.meta dt{font-weight:600}
+header.meta dd{margin:0;overflow-wrap:anywhere}
+footer.prov{margin-top:4rem;padding-top:1.25rem;border-top:1px solid var(--line);
+  color:var(--muted);font-size:.82rem}
+hr{border:0;border-top:1px solid var(--line);margin:2.5rem 0}
+@media print{body{padding:0}main{max-width:none}h2{page-break-after:avoid}}
+</style>
+</head>
+<body>
+<main>
+<header class="meta">
+<h1>mem0's entity / attribute / graph pipeline — recognizing, injecting, extracting, consolidating, returning, reconstructing</h1>
+<p class="sub">A source-level walk of mem0 v2.2.1's entity and attribute lifecycle &mdash; recognizing, injecting, extracting, consolidating, returning, reconstructing</p>
+<dl>
+<dt>Repo</dt><dd><code>/home/mmonk/Downloads/mem0-main(3)/mem0-main</code></dd>
+<dt>Version</dt><dd><code>mem0ai</code> 2.2.1</dd>
+<dt>Generated</dt><dd>2026-10-26</dd>
+<dt>Evidence</dt><dd>every claim carries <code>path:line</code>; greps reproduced from live runs</dd>
+</dl>
+</header>
+<section id="preamble">
+<table>
+<thead>
+<tr>
+<th scope="col"></th>
+<th scope="col"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Repo analysed</strong></td>
+<td><code>/home/mmonk/Downloads/mem0-main(3)/mem0-main</code></td>
+</tr>
+<tr>
+<td><strong>Version</strong></td>
+<td><code>mem0ai</code> <strong>v2.2.1</strong> (<code>pyproject.toml</code>)</td>
+</tr>
+<tr>
+<td><strong>Date</strong></td>
+<td>2026-10-26</td>
+</tr>
+<tr>
+<td><strong>Scope</strong></td>
+<td>The whole entity lifecycle: how entities and attributes are <strong>recognized</strong>, <strong>injected</strong> into the store, <strong>extracted</strong> by the LLM, <strong>consolidated</strong>, <strong>returned</strong> to a caller, and whether full memories can be <strong>reconstructed</strong> out of graph paths</td>
+</tr>
+<tr>
+<td><strong>Evidence base</strong></td>
+<td><code>.shrimp/scratch/entity-pipeline-evidence.md</code> (all line numbers re-verified by <code>grep -n</code> against the repo above)</td>
+</tr>
+</tbody>
+</table>
+
+</section>
+<section>
+<h2 id="orientation">Orientation</h2>
+<p>OSS mem0 has <strong>no graph database</strong> — its "graph" is a <em>second vector collection of entity rows</em>, and the edges of that graph live inside the payload: each entity row carries a <code>linked_memory_ids</code> list naming the memories that mention it (<code>mem0/memory/main.py:559</code>, <code>:637-648</code>). There is no Cypher, no traversal, no typed relationship, and no <code>relations</code> key in any OSS response (<code>mem0/memory/main.py:1393</code>, <code>:1705-1740</code>). Everything downstream of that one structural decision follows: "recognition" is a spaCy NER pass rather than a graph builder, "consolidation" is an exact-or-cosine-0.95 row merge rather than an LLM reconciliation call, and "reconstructing a memory from a path" collapses into a single hop — query entity → entity rows → the <code>linked_memory_ids</code> in their payload — after which those memories are returned verbatim. The sections below walk each phase in the user's own vocabulary, and every claim carries <code>path:line</code>. The managed Platform <em>does</em> build a real graph, and the OSS/Platform split is documented in the repo; where that matters the docs are cited rather than the code.</p>
+</section>
+<section>
+<h2 id="the-six-phases">The six phases</h2>
+<table>
+<thead>
+<tr>
+<th scope="col">#</th>
+<th scope="col">Phase (user's word)</th>
+<th scope="col">What v2.2.1 does</th>
+<th scope="col">File — function(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Recognizing</strong> the entities and attributes</td>
+<td>spaCy <code>en_core_web_sm</code> NER plus four rule-based candidate generators, resolved by priority/confidence/span-overlap; <strong>no LLM call</strong>. Returns <code>list[(entity_type, entity_text)]</code>, <code>[]</code> if spaCy is absent. Query text goes through the same recogniser at search time.</td>
+<td><code>mem0/utils/entity_extraction.py</code> — <code>extract_entities</code> 751, <code>extract_entities_batch</code> 761, <code>_resolve_candidates</code> 705–728; <code>mem0/utils/spacy_models.py</code> — <code>get_nlp_full</code> 44, <code>get_nlp_lemma</code> 69</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Injecting</strong> into the graph</td>
+<td>Lazily builds a <em>second</em> instance of the configured vector-store provider, collection <code>&lt;collection&gt;_entities</code>. One row = one entity node; payload <code>{data, entity_type, linked_memory_ids, user_id/agent_id/run_id}</code>. Upsert = embed → exact normalised-text match → else semantic match at <code>score &gt;= 0.95</code> → append id to <code>linked_memory_ids</code>; else new <code>uuid4</code> row. Non-fatal on failure.</td>
+<td><code>mem0/memory/main.py</code> — <code>entity_store</code> 559, <code>_entity_collection_name</code> 422, <code>_upsert_entity</code> 605, <code>_existing_entities_by_text</code> 586, <code>_normalize_entity_text</code> 583, <code>_link_entities_for_memory</code> 707, Phase 7 of <code>_add_to_vector_store</code> 1100–1199</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Extracting</strong> memories and attributes</td>
+<td>One LLM call in Phase 2 of a linear 8-phase <code>_add_to_vector_store</code>. Writes <code>text</code>, <code>attributed_to</code> (user/assistant, required) and an <em>optional</em> <code>linked_memory_ids</code>. <code>attributed_to</code> is stored and later promoted to top level; the LLM's <code>linked_memory_ids</code> is <strong>never read</strong> — memory↔memory edges do not exist in OSS.</td>
+<td><code>mem0/memory/main.py</code> — <code>add</code> 760, <code>_add_to_vector_store</code> 881 (phase markers 920/925/942/993/1007/1047/1100/1206); <code>mem0/configs/prompts.py</code> — <code>ADDITIVE_EXTRACTION_PROMPT</code> 468, <code>generate_additive_extraction_prompt</code> 1016–1062, output contract 920–941</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Consolidating</strong> entities and attributes</td>
+<td><strong>ADD-only.</strong> The legacy ADD/UPDATE/DELETE/NONE reconciliation prompt still ships but is unreachable. The only real consolidation is entity-row merge: same normalised text or cosine ≥ 0.95 unions <code>linked_memory_ids</code> instead of making a duplicate node; plus md5 exact-dedup of fact text and SQLite history rows. Count decay is a <em>scoring-time</em> anti-hub dampener, not a write-time merge.</td>
+<td><code>mem0/memory/main.py</code> — <code>_upsert_entity</code> 605 (merge 620–631), <code>_add_to_vector_store</code> Phase 4/5 1007–1045 + Phase 7d 1170–1176, <code>_remove_memory_from_entity_store</code> 652; <code>mem0/memory/storage.py</code> — <code>add_history</code> 150, <code>batch_add_history</code> 193, <code>get_history</code> 227</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Returning</strong> entities and attributes</td>
+<td>Query-side pipeline: lemmatise + <code>extract_entities(query)</code> → embed → semantic <code>top_k = max(limit*4, 60)</code> → BM25 → entity boosts → <code>score_and_rank</code> → <code>MemoryItem</code>. Boosts need the entity rows' <code>linked_memory_ids</code> to name memory uuids, which are then fetched <em>as whole memories</em> by the normal vector query. Result is <code>{"results": [...]}</code> with the score breakdown optionally in <code>score_details</code>; <strong>no <code>relations</code>, no graph payload</strong>.</td>
+<td><code>mem0/memory/main.py</code> — <code>search</code> 1393, <code>_search_vector_store</code> 1642, <code>_compute_entity_boosts</code> 1747; <code>mem0/utils/scoring.py</code> — <code>score_and_rank</code> 60, <code>normalize_bm25</code> 43, <code>get_bm25_params</code> 16</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Reconstructing</strong> full memories from graph paths</td>
+<td><strong>Does not exist in this repo.</strong> Zero hits for <code>multi-hop|multi_hop|traverse|graph_path</code> under <code>mem0/ server/ cli/</code>. No entity→entity walk, no re-summarisation. The only "reconstruction" is one-hop rehydration of <code>linked_memory_ids</code> into verbatim memory rows. The sole triple-shaped formatter, <code>format_entities</code> (<code>mem0/memory/utils.py:79</code>), has zero callers.</td>
+<td><em>no implementation</em> — nearest artefacts: <code>mem0/memory/main.py</code> <code>_compute_entity_boosts</code> 1747–1825 (the one hop), <code>mem0/memory/utils.py</code> <code>format_entities</code> 79–88 (dead), <code>mem0/proxy/main.py:181-182</code> (reads <code>relations</code>, always absent for OSS)</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section>
+<h2 id="1-code-map">§1 Code map</h2>
+<table>
+<thead>
+<tr>
+<th scope="col">Concern</th>
+<th scope="col">File</th>
+<th scope="col">Key symbols (line)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Memory engine (sync + async)</td>
+<td><code>mem0/memory/main.py</code> (3912 lines)</td>
+<td><code>class Memory</code> 487 · <code>add</code> 760 · <code>_add_to_vector_store</code> 881 · <code>search</code> 1393 · <code>_search_vector_store</code> 1642 · <code>_compute_entity_boosts</code> 1747 · <code>entity_store</code> property 559 · <code>_upsert_entity</code> 605</td>
+</tr>
+<tr>
+<td>Entity recognition (spaCy, rule-based)</td>
+<td><code>mem0/utils/entity_extraction.py</code> (772 lines)</td>
+<td><code>extract_entities</code> 751 · <code>extract_entities_batch</code> 761 · <code>_resolve_candidates</code> 705</td>
+</tr>
+<tr>
+<td>spaCy model loading (lazy, optional extra)</td>
+<td><code>mem0/utils/spacy_models.py</code></td>
+<td><code>get_nlp_full</code> 44 (<code>spacy.load</code> 60) · <code>get_nlp_lemma</code> 69 (<code>spacy.load</code> 85)</td>
+</tr>
+<tr>
+<td>Ranking math (BM25 + entity boost)</td>
+<td><code>mem0/utils/scoring.py</code> (~140 lines)</td>
+<td><code>score_and_rank</code> 60 · <code>normalize_bm25</code> 43 · <code>get_bm25_params</code> 16</td>
+</tr>
+<tr>
+<td>Prompts (extraction contract)</td>
+<td><code>mem0/configs/prompts.py</code> (1062 lines)</td>
+<td><code>ADDITIVE_EXTRACTION_PROMPT</code> 468 · <code>generate_additive_extraction_prompt</code> 1016 · <code>AGENT_CONTEXT_SUFFIX</code> 947 · legacy <code>DEFAULT_UPDATE_MEMORY_PROMPT</code> 176</td>
+</tr>
+<tr>
+<td>Storage / history (SQLite)</td>
+<td><code>mem0/memory/storage.py</code> (~350 lines)</td>
+<td><code>add_history</code> 150 · <code>batch_add_history</code> 193 · <code>get_history</code> 227</td>
+</tr>
+<tr>
+<td>Managed / hosted client (HTTP, Platform)</td>
+<td><code>mem0/client/main.py</code> (2313 lines)</td>
+<td><code>class MemoryClient</code> 227 · <code>add</code> 321 · <code>search</code> 436 (async twins 1422 / 1521)</td>
+</tr>
+<tr>
+<td>OSS REST server — a <em>different</em> notion of "entity"</td>
+<td><code>server/routers/entities.py</code></td>
+<td><code>list_entities</code> 44 — enumerates <code>user_id</code>/<code>agent_id</code>/<code>run_id</code> values across memory payloads (<code>SCAN_LIMIT = 10_000</code>), i.e. tenant ids, not graph entities</td>
+</tr>
+<tr>
+<td>Docs stating the OSS / Platform split</td>
+<td><code>docs/core-concepts/how-it-works.mdx</code> (64), <code>docs/platform/features/graph-memory.mdx</code></td>
+<td>"OSS retrieval … boosts on entity overlap alone: it has no graph memory" · graph affects <strong>ranking, not response shape</strong>; <code>relations</code> always <code>[]</code> for compatibility; no typed, labeled relationships</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section>
+<h2 id="2-recognizing-the-entities-and-attributes">§2 Recognizing the entities and attributes</h2>
+<p>Recognition is <strong>spaCy-only</strong>. <code>mem0/utils/entity_extraction.py</code> contains no prompt, no client and no<br />
+completion call: <code>extract_entities(text)</code> (<code>751</code>) does nothing but <code>get_nlp_full()</code> and<br />
+<code>_extract_entities_from_doc(nlp(text))</code> (<code>751-758</code>). The whole phase is a local NER + rules pass, so<br />
+"recognizing entities" costs a tokeniser run, not an LLM request.</p>
+<table>
+<thead>
+<tr>
+<th scope="col">Concern</th>
+<th scope="col">Symbol</th>
+<th scope="col">Line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Single-text entry point</td>
+<td><code>extract_entities(text) -&gt; list[tuple[str, str]]</code></td>
+<td><code>entity_extraction.py:751</code></td>
+</tr>
+<tr>
+<td>Batched entry point</td>
+<td><code>extract_entities_batch(texts, batch_size=32)</code></td>
+<td><code>entity_extraction.py:761</code></td>
+</tr>
+<tr>
+<td>Degradation</td>
+<td><code>if nlp is None: return []</code></td>
+<td><code>entity_extraction.py:756-757</code></td>
+</tr>
+<tr>
+<td>Full model (NER on)</td>
+<td><code>get_nlp_full()</code> → lazy <code>spacy.load("en_core_web_sm")</code></td>
+<td><code>spacy_models.py:44</code>, <code>:60</code></td>
+</tr>
+<tr>
+<td>Lemma model (NER off)</td>
+<td><code>get_nlp_lemma()</code> → <code>spacy.load(..., disable=["ner","parser"])</code></td>
+<td><code>spacy_models.py:69</code>, <code>:85</code></td>
+</tr>
+<tr>
+<td>Packaging</td>
+<td><code>nlp = ["spacy&gt;=3.7.0"]</code> optional extra</td>
+<td><code>pyproject.toml:28-30</code></td>
+</tr>
+</tbody>
+</table>
+<p>Both entry points return <code>list[tuple[entity_type, entity_text]]</code> — <strong>type and text, nothing else</strong> —<br />
+and both return <code>[]</code> (or <code>[]</code> per text) when spaCy or the model is absent (<code>751-758</code>, <code>761-767</code>). spaCy<br />
+is an <em>optional</em> extra, so an install without <code>[nlp]</code> silently recognises zero entities while <code>add()</code><br />
+still succeeds; the failure mode is an empty graph, not an error.</p>
+<h3 id="the-four-types-and-the-five-generators">The four types and the five generators</h3>
+<p><code>_extract_entities_from_doc</code> (<code>731-748</code>) runs five generators over one <code>Doc</code> and hands the candidate<br />
+list to <code>_resolve_candidates</code> (<code>748</code>). Four entity types come out of five generators — two of them<br />
+both produce <code>PROPER</code>:</p>
+<table>
+<thead>
+<tr>
+<th scope="col">Type</th>
+<th scope="col">Generator</th>
+<th scope="col">Line</th>
+<th scope="col">What it catches</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>PROPER</strong></td>
+<td><code>_add_ner_candidates</code></td>
+<td><code>498</code></td>
+<td>spaCy NER spans (<code>PERSON</code>, <code>ORG</code>, <code>GPE</code>, …) — the model's own opinion</td>
+</tr>
+<tr>
+<td><strong>PROPER</strong></td>
+<td><code>_add_proper_name_candidates</code></td>
+<td><code>543</code></td>
+<td>capitalised token runs the NER tagger missed; noun-phrase heads vetted against <code>_GENERIC_HEADS</code> (<code>628</code>)</td>
+</tr>
+<tr>
+<td><strong>IDENTIFIER</strong></td>
+<td><code>_add_technical_identifier_candidates</code></td>
+<td><code>528</code></td>
+<td>code-shaped tokens: snake_case, dots, slashes, internal caps/digits (<code>_looks_like_technical_identifier</code> <code>404</code>, <code>_has_internal_cap_or_digit</code> <code>408</code>)</td>
+</tr>
+<tr>
+<td><strong>QUOTED</strong></td>
+<td><code>_add_quoted_candidates</code></td>
+<td><code>581</code></td>
+<td>anything inside quotes/backticks — the user explicitly named it</td>
+</tr>
+<tr>
+<td><strong>TOPIC</strong></td>
+<td><code>_add_topic_phrase_candidates</code></td>
+<td><code>590</code></td>
+<td>multi-word lower-case noun phrases, e.g. a subject being discussed</td>
+</tr>
+</tbody>
+</table>
+<h3 id="resolution-one-winner-per-text-no-overlaps">Resolution: one winner per text, no overlaps</h3>
+<p><code>_resolve_candidates</code> (<code>705-728</code>) is a three-pass filter, and it is where the "graph" gets its nodes:</p>
+<ol>
+<li><strong>Dedup by text</strong> — key <code>_norm_text(candidate.text)</code> in a dict (<code>708</code>); on collision keep the better<br />
+<code>(priority, -confidence)</code> (<code>709</code>).</li>
+<li><strong>Drop span overlaps</strong> (<code>718-724</code>), after sorting by <code>(priority, -confidence, span length, start)</code><br />
+   (<code>712-715</code>). One exception (<code>721</code>): a TOPIC containing a space survives <em>inside</em> a PROPER span, so<br />
+   "machine learning" can coexist with the org/person name it sits in.</li>
+<li><strong>Re-sort by source offset</strong> (<code>726</code>) — output order is document order, not score order.</li>
+</ol>
+<p>Consequence: for any given text there is at most one node of each type, and no two nodes share an<br />
+offset range. That is the entire "entity resolution" step.</p>
+<h3 id="precision-machinery">Precision machinery</h3>
+<p>Most of the file is blocklists and heuristics rather than NER, because <code>en_core_web_sm</code> over-fires on<br />
+generic English:</p>
+<table>
+<thead>
+<tr>
+<th scope="col">Guard</th>
+<th scope="col">Line</th>
+<th scope="col">Job</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_GENERIC_HEADS</code></td>
+<td><code>36</code></td>
+<td>blocklist of head lemmas ("system", "data", …) — a capitalised span headed by one is not an entity (<code>628</code>)</td>
+</tr>
+<tr>
+<td><code>_looks_like_technical_identifier</code></td>
+<td><code>404</code></td>
+<td>decides if a token is code-shaped enough to be <code>IDENTIFIER</code></td>
+</tr>
+<tr>
+<td><code>_has_internal_cap_or_digit</code></td>
+<td><code>408</code></td>
+<td>camelCase / digit evidence used by the above</td>
+</tr>
+<tr>
+<td><code>_is_metric_list_context</code></td>
+<td><code>416</code></td>
+<td>suppresses counts in "3 users, 4 tables" style lists</td>
+</tr>
+<tr>
+<td><code>_strip_trailing_metric_counts</code></td>
+<td><code>422</code></td>
+<td>trims the trailing number off a span before it becomes a node</td>
+</tr>
+<tr>
+<td><code>_strip_generic_ending</code></td>
+<td><code>367</code></td>
+<td>removes generic tails from a compound before comparison</td>
+</tr>
+<tr>
+<td><code>_lemmatize_compound</code></td>
+<td><code>375</code></td>
+<td>lemma-form compound for text-level matching</td>
+</tr>
+</tbody>
+</table>
+<h3 id="symmetry-the-query-goes-through-the-same-recogniser">Symmetry: the query goes through the same recogniser</h3>
+<p>Search is not a different code path. <code>_search_vector_store</code> calls <code>extract_entities(query)</code> verbatim<br />
+(<code>main.py:1649</code>; async twin <code>await asyncio.to_thread(extract_entities, query)</code> at <code>3336</code>), so the<br />
+entities boosted at query time are produced by exactly the rules that produced the stored nodes. A<br />
+recognition miss therefore hurts both write and read symmetrically — nothing recognises what the other<br />
+side could not.</p>
+<h3 id="attributes-there-are-none">Attributes: there are none</h3>
+<p>Recognition yields <strong><code>(type, text)</code> and nothing more</strong>. The <code>NamedTuple</code>/tuple contract at <code>751</code> and<br />
+<code>761</code> carries no attribute slot, <code>_EntityCandidate</code> resolution returns <code>[(entity_type, text)]</code><br />
+(<code>729</code>), and no caller invents one. An attribute would have to come from somewhere the recogniser does<br />
+not look:</p>
+<ul>
+<li>the LLM extraction phase, which does write one attribute — <code>attributed_to ∈ {user, assistant}</code><br />
+  (<code>prompts.py:920-941</code>) — but attaches it to the <em>memory</em>, not to the entity;</li>
+<li>or a new extractor, since the entity row payload only ever holds <code>data</code>, <code>entity_type</code>,<br />
+<code>linked_memory_ids</code> and the identity keys (<code>main.py:637-648</code>).</li>
+</ul>
+<p>So "recognizing the entities <strong>and attributes</strong>" in v2.2.1 is: recognise the entities, and take the<br />
+attribute from the memory's own payload instead.</p>
+</section>
+<section>
+<h2 id="3-injecting-the-entities-into-the-graph">§3 Injecting the entities into the graph</h2>
+<p>"Graph" is doing a lot of work in this sentence. What v2.2.1 injects into is a <strong>second collection in<br />
+the same vector store</strong> — same provider, same embedding model, sibling collection name. There is no<br />
+graph engine anywhere on this path.</p>
+<h3 id="a-second-collection-not-a-graph-database">A second collection, not a graph database</h3>
+<p><code>entity_store</code> (<code>main.py:559-580</code>) is a lazily-initialised property. On first access it deep-copies<br />
+the configured <code>vector_store.config</code>, renames the collection via <code>_entity_collection_name</code> (<code>563</code>),<br />
+shares the Qdrant client in embedded mode to dodge RocksDB lock contention (<code>572-576</code>), and hands the<br />
+result to <code>VectorStoreFactory.create(self.config.vector_store.provider, entity_config)</code> (<code>577-579</code>).<br />
+So the entity store is <em>the same provider you already configured</em>, instantiated twice.</p>
+<p><code>_entity_collection_name</code> (<code>422-424</code>) is three lines:</p>
+<pre><code class="language-python">separator = &quot;-&quot; if provider == &quot;s3_vectors&quot; else &quot;_&quot;
+return f&quot;{collection_name}{separator}entities&quot;
+</code></pre>
+<p>Memory vectors live in <code>&lt;collection&gt;</code>; entity nodes live in <code>&lt;collection&gt;_entities</code> (<code>-entities</code> on<br />
+<code>s3_vectors</code>). Nothing links the two collections at the storage layer — the join is done in payload,<br />
+by id.</p>
+<h3 id="the-node-row-one-entity-its-type-and-its-edge-list">The node row: one entity, its type, and its edge list</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Payload field</th>
+<th scope="col">Meaning</th>
+<th scope="col">Single path</th>
+<th scope="col">Batch path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>data</code></td>
+<td>the entity text exactly as the recogniser produced it</td>
+<td><code>main.py:639</code></td>
+<td><code>main.py:1187</code></td>
+</tr>
+<tr>
+<td><code>entity_type</code></td>
+<td><code>PROPER</code> | <code>QUOTED</code> | <code>TOPIC</code> | <code>IDENTIFIER</code></td>
+<td><code>main.py:640</code></td>
+<td><code>main.py:1188</code></td>
+</tr>
+<tr>
+<td><code>linked_memory_ids</code></td>
+<td>the memory uuids this entity was seen in — <strong>the edges</strong></td>
+<td><code>main.py:641</code></td>
+<td><code>main.py:1189</code></td>
+</tr>
+<tr>
+<td><code>user_id</code> / <code>agent_id</code> / <code>run_id</code></td>
+<td>whichever identity keys the call carried (<code>**search_filters</code>)</td>
+<td><code>main.py:642</code></td>
+<td><code>main.py:1190</code></td>
+</tr>
+</tbody>
+</table>
+<p>That is the entire schema — five fields, no <code>relations</code>, no <code>attributes</code>, no <code>source</code>/<code>target</code>.</p>
+<p><strong>The node <em>is</em> the entity, and the edges are the ids inside <code>linked_memory_ids</code>.</strong> One row is one<br />
+entity; its adjacency is a list of memory uuids in its own payload. That makes the "graph" a bipartite<br />
+entity↔memory adjacency table expressed as payload, which is why there is no traversal API to call:<br />
+you read a row's <code>linked_memory_ids</code> and fetch those memories with the ordinary vector query.<br />
+Entity↔memory is the <strong>only</strong> edge kind in OSS. Memory↔memory edges do not exist — the extractor's<br />
+<code>linked_memory_ids</code> proposal is never read back (<code>prompts.py:920-941</code> declares it; <code>main.py</code> never<br />
+<code>.get("linked_memory_ids")</code> on a memory payload), and entity↔entity never appears at all.</p>
+<h3 id="_upsert_entity-mainpy605-650-step-by-step"><code>_upsert_entity</code> (<code>main.py:605-650</code>), step by step</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">#</th>
+<th scope="col">Step</th>
+<th scope="col">Line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Embed the entity text: <code>self.embedding_model.embed(entity_text, "add")</code></td>
+<td><code>608</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Narrow the filters to the 3 identity keys only: <code>{k: v for k, v in filters.items() if k in ("user_id","agent_id","run_id") and v}</code></td>
+<td><code>609</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Exact</strong> match on normalised text, via <code>_existing_entities_by_text</code></td>
+<td><code>610</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>Else <strong>semantic</strong> <code>search(query=..., vectors=..., top_k=1, filters=...)</code>, accepted only at <code>score &gt;= 0.95</code></td>
+<td><code>614-621</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td>Match ⇒ append id, <code>update(vector_id=match.id, vector=None, payload=payload)</code>; no match ⇒ new <code>uuid4</code> row + <code>insert</code></td>
+<td><code>623-634</code> / <code>636-648</code></td>
+</tr>
+</tbody>
+</table>
+<p>Step 3 is the cheap and reliable one: <code>_existing_entities_by_text</code> (<code>586-603</code>) does a scoped<br />
+<code>self.entity_store.list(filters=filters, top_k=10000)</code> (<code>588-589</code>) and keys the rows by<br />
+<code>_normalize_entity_text</code> (<code>583-584</code>), which is only<br />
+<code>" ".join(value.strip().lower().split())</code> — case and whitespace folding, no stemming, no lemmatising.<br />
+So "Postgres"/"postgres"/" Postgres " are one node; "Postgres"/"PostgreSQL" are two unless step 4<br />
+catches them.</p>
+<p><code>update(vector=None, ...)</code> (<code>631-634</code>) is deliberate: the text did not change, only the edge list, so<br />
+there is no reason to spend an embedding. That choice is exactly what forces the re-embed on the<br />
+delete path below, where a payload update <em>does</em> go out with a vector.</p>
+<h3 id="phase-7-of-_add_to_vector_store-mainpy1100-1204-the-batched-version-of-the-same-thing">Phase 7 of <code>_add_to_vector_store</code> (<code>main.py:1100-1204</code>) — the batched version of the same thing</h3>
+<p>The single path runs once per memory; the batch path runs once per <code>add()</code> call over all its memories,<br />
+in five sub-steps:</p>
+<table>
+<thead>
+<tr>
+<th scope="col">Sub-step</th>
+<th scope="col">What it does</th>
+<th scope="col">Line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>7a</strong> global dedup</td>
+<td>one dict keyed by normalised text, value <code>[entity_type, entity_text, set(memory_ids)]</code>, across every persisted memory — one entity per batch</td>
+<td><code>1105-1114</code></td>
+</tr>
+<tr>
+<td><strong>7b</strong> batch embed</td>
+<td>one <code>embed_batch(entity_texts, "add")</code>, per-text fallback to <code>None</code> on failure, then a padding/truncation guard keyed to a warning — "to avoid dropping entity links"</td>
+<td><code>1120-1145</code></td>
+</tr>
+<tr>
+<td><strong>7c</strong> batch lookup</td>
+<td><code>entity_store.search_batch(queries=..., vectors_list=..., top_k=1, filters=...)</code>, plus the exact-match dict from <code>_existing_entities_by_text</code></td>
+<td><code>1148-1157</code></td>
+</tr>
+<tr>
+<td><strong>7d</strong> merge or queue insert</td>
+<td>exact, else semantic at <code>score &gt;= 0.95</code>; merge does <code>linked_memory_ids = sorted(set(old) \| new)</code> and <code>update(vector=None, ...)</code>; else queued with <code>sorted(memory_ids)</code></td>
+<td><code>1159-1191</code></td>
+</tr>
+<tr>
+<td><strong>7e</strong> one insert</td>
+<td>single <code>entity_store.insert(vectors=..., ids=..., payloads=...)</code> for all new entities</td>
+<td><code>1193-1200</code></td>
+</tr>
+</tbody>
+</table>
+<p>Two small asymmetries worth knowing: exact match wins unconditionally over semantic (<code>1167</code>), and the<br />
+merge is a <strong>set union</strong>, so ids are never removed and order is normalised by <code>sorted</code> (<code>1173</code>). A<br />
+wrong 0.95 merge is therefore permanent — nothing later splits the two entities' edge lists apart.</p>
+<h3 id="deletion-keeps-the-adjacency-honest-_remove_memory_from_entity_store-652-705">Deletion keeps the adjacency honest — <code>_remove_memory_from_entity_store</code> (<code>652-705</code>)</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Step</th>
+<th scope="col">Line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>no-op if the entity store was never initialised this process</td>
+<td><code>665-666</code></td>
+</tr>
+<tr>
+<td>scoped <code>list(filters=search_filters, top_k=10000)</code></td>
+<td><code>667-669</code></td>
+</tr>
+<tr>
+<td>strip the id; if the list empties, <code>delete(vector_id=row.id)</code></td>
+<td><code>677-682</code></td>
+</tr>
+<tr>
+<td>else <strong>re-embed</strong> the entity text and <code>update(vector_id=..., vector=vec, payload=new_payload)</code></td>
+<td><code>684-699</code></td>
+</tr>
+</tbody>
+</table>
+<p>The re-embed exists for one reason, stated in the docstring (<code>655-663</code>): "re-embed the entity text and<br />
+update the payload (the vector store's <code>update()</code> requires a vector)". The write path can pass<br />
+<code>vector=None</code> because it uses the id it just matched; this path re-reads arbitrary rows and the store<br />
+will not accept a payload-only update there. Call sites: <code>delete</code> <code>2109</code> / <code>2140</code>, the <code>reset()</code><br />
+teardown <code>2166-2171</code>, <code>2210</code>; async twin at <code>3829</code> / <code>3861</code> (<code>_remove_memory_from_entity_store</code> async<br />
+<code>2361-2404</code>).</p>
+<h3 id="non-fatal-by-design">Non-fatal by design</h3>
+<p>Every entry point on this path is wrapped in <code>try/except</code> with a log line and no re-raise:</p>
+<table>
+<thead>
+<tr>
+<th scope="col">Site</th>
+<th scope="col">Handler</th>
+<th scope="col">Line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_upsert_entity</code> whole body</td>
+<td><code>logger.warning(f"Entity upsert failed for '{entity_text}': {e}")</code></td>
+<td><code>649-650</code></td>
+</tr>
+<tr>
+<td>Phase 7 whole block</td>
+<td><code>try:</code> at the phase marker, per-entity update failure at <code>logger.debug</code></td>
+<td><code>1101</code>, <code>1180-1181</code></td>
+</tr>
+<tr>
+<td><code>_remove_memory_from_entity_store</code></td>
+<td>per-row failures at debug, outer failure at warning</td>
+<td><code>700-705</code></td>
+</tr>
+<tr>
+<td><code>_existing_entities_by_text</code></td>
+<td><code>list()</code> failure falls back to <code>{}</code>, i.e. semantic dedup only</td>
+<td><code>590-592</code></td>
+</tr>
+</tbody>
+</table>
+<p>The graph is therefore <strong>best-effort decoration</strong>. Phase 7 runs <em>after</em> Phase 6 has already persisted<br />
+the memories (<code>1100</code> vs the phase markers at <code>1047</code>), so a dead entity store, a missing spaCy model, or<br />
+a provider that rejects the <code>*_entities</code> collection produces a log line and a memory with no entity<br />
+rows — never a failed <code>add()</code>. That is a deliberate design choice, and it is also why an empty graph is<br />
+easy to mistake for a working one.</p>
+</section>
+<section>
+<h2 id="4-extracting-memories-and-attributes">§4 Extracting memories and attributes</h2>
+<p>Extraction is one function, called once per <code>add()</code>. <code>_add_to_vector_store</code> (<code>mem0/memory/main.py:881</code>)<br />
+is linear: no branching between phases, no retry loop, no second model call. Everything below is a<br />
+position in that single pass.</p>
+<h3 id="the-eight-phases">The eight phases</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Phase</th>
+<th scope="col">Marker</th>
+<th scope="col">What it does</th>
+<th scope="col">Key lines</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>0</strong> Context gathering</td>
+<td><code>main.py:920</code></td>
+<td>builds <code>session_scope</code>, pulls the last 10 stored messages, parses the incoming turns</td>
+<td><code>920-923</code></td>
+</tr>
+<tr>
+<td><strong>1</strong> Existing memory retrieval</td>
+<td><code>main.py:925</code></td>
+<td>embeds the parsed messages with purpose <code>"search"</code>, <code>vector_store.search(top_k=10)</code> scoped to the identity keys, then maps real UUIDs to integer strings <code>"0"</code>, <code>"1"</code>, … ("anti-hallucination")</td>
+<td><code>925-940</code></td>
+</tr>
+<tr>
+<td><strong>2</strong> LLM extraction</td>
+<td><code>main.py:942</code></td>
+<td><strong>the only LLM call in the whole add path</strong> — <code>self.llm.generate_response(...)</code> at <code>958</code>, <code>response_format={"type": "json_object"}</code></td>
+<td><code>942-991</code></td>
+</tr>
+<tr>
+<td><strong>3</strong> Batch embed</td>
+<td><code>main.py:993</code></td>
+<td>one <code>embed_batch(mem_texts, "add")</code>, falling back to per-text <code>embed()</code> on exception</td>
+<td><code>993-1005</code></td>
+</tr>
+<tr>
+<td><strong>4</strong> Per-memory CPU processing + <strong>5</strong> Hash dedup</td>
+<td><code>main.py:1007</code></td>
+<td>md5 of the text, drop on collision with stored hashes <em>or</em> with an earlier item in the batch, lemmatise for BM25, assemble the payload</td>
+<td><code>1007-1045</code></td>
+</tr>
+<tr>
+<td><strong>6</strong> Batch persist</td>
+<td><code>main.py:1047</code></td>
+<td>one <code>vector_store.insert(...)</code>, per-record fallback, then <code>batch_add_history</code> with <code>event="ADD"</code></td>
+<td><code>1047-1098</code></td>
+</tr>
+<tr>
+<td><strong>7</strong> Batch entity linking</td>
+<td><code>main.py:1100</code></td>
+<td>spaCy entities for every persisted memory → dedup → embed → merge-or-insert into the <code>*_entities</code> collection</td>
+<td><code>1100-1204</code></td>
+</tr>
+<tr>
+<td><strong>8</strong> Save messages + return</td>
+<td><code>main.py:1206</code></td>
+<td><code>db.save_messages</code>, build <code>{"id", "memory", "event": "ADD"}</code> rows, <code>capture_event("mem0.add", …)</code></td>
+<td><code>1206-1230</code></td>
+</tr>
+</tbody>
+</table>
+<p>Only Phase 2 touches a model that can read language. Phases 3 and 7 call the <em>embedding</em> model; Phase 7<br />
+additionally calls spaCy. Nothing in the add path ever asks an LLM to compare a new fact against an old<br />
+one — that work is absent, not deferred.</p>
+<h3 id="the-prompt-pair">The prompt pair</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Half</th>
+<th scope="col">Symbol</th>
+<th scope="col">Line</th>
+<th scope="col">Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>System</td>
+<td><code>ADDITIVE_EXTRACTION_PROMPT</code></td>
+<td><code>mem0/configs/prompts.py:468</code></td>
+<td>"Your sole operation is ADD" (<code>472</code>)</td>
+</tr>
+<tr>
+<td>System suffix</td>
+<td><code>AGENT_CONTEXT_SUFFIX</code></td>
+<td><code>prompts.py:947</code></td>
+<td>appended when <code>agent_id</code> set and no <code>user_id</code> — <code>main.py:944-946</code></td>
+</tr>
+<tr>
+<td>User</td>
+<td><code>generate_additive_extraction_prompt(...)</code></td>
+<td><code>prompts.py:1016-1062</code></td>
+<td>called at <code>main.py:951-956</code> with <code>existing_memories</code>, <code>new_messages</code>, <code>last_k_messages</code>, <code>custom_instructions</code></td>
+</tr>
+</tbody>
+</table>
+<p>The user prompt is nine <code>sections.append(...)</code> calls joined by blank lines (<code>prompts.py:1036-1062</code>); four are always present, <code>## Custom Instructions</code> is conditional (<code>1044-1045</code>), and two more are conditional — <code>## Language Requirement</code> (<code>1047-1060</code>) and <code># Output:</code> (<code>1061</code>):</p>
+<table>
+<thead>
+<tr>
+<th scope="col">Section</th>
+<th scope="col">Line</th>
+<th scope="col">Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>## Summary</code></td>
+<td><code>prompts.py:1036</code></td>
+<td>rolling conversation summary</td>
+</tr>
+<tr>
+<td><code>## Last k Messages</code></td>
+<td><code>prompts.py:1037</code></td>
+<td>the 10 messages Phase 0 fetched</td>
+</tr>
+<tr>
+<td><code>## Recently Extracted Memories</code></td>
+<td><code>prompts.py:1038</code></td>
+<td>what the previous turn already produced</td>
+</tr>
+<tr>
+<td><code>## Existing Memories</code></td>
+<td><code>prompts.py:1039</code></td>
+<td>the <code>top_k=10</code> hits, as <code>{"id": "0", "text": …}</code></td>
+</tr>
+<tr>
+<td><code>## New Messages</code></td>
+<td><code>prompts.py:1040</code></td>
+<td>the turns being extracted</td>
+</tr>
+<tr>
+<td><code>## Observation Date</code></td>
+<td><code>prompts.py:1041</code></td>
+<td>resolved by <code>_resolve_dates</code> (<code>prompts.py:1007</code>, called <code>1033</code>)</td>
+</tr>
+<tr>
+<td><code>## Current Date</code></td>
+<td><code>prompts.py:1042</code></td>
+<td>same</td>
+</tr>
+<tr>
+<td><code>## Custom Instructions</code></td>
+<td><code>prompts.py:1045</code></td>
+<td>only if <code>prompt</code> or <code>self.custom_instructions</code> is set (<code>main.py:948</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-output-contract-and-where-attributes-actually-are">The output contract — and where "attributes" actually are</h3>
+<p><code>prompts.py:918-941</code>, under <code># OUTPUT FORMAT</code> / <code>## Fields</code>:</p>
+<table>
+<thead>
+<tr>
+<th scope="col">Field</th>
+<th scope="col">Required?</th>
+<th scope="col">Contract text</th>
+<th scope="col">Line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>yes</td>
+<td>sequential integers as strings from <code>"0"</code></td>
+<td><code>prompts.py:933</code></td>
+</tr>
+<tr>
+<td><code>text</code></td>
+<td>yes</td>
+<td>"contextually rich, self-contained factual statement (15-80 words)"</td>
+<td><code>prompts.py:934</code></td>
+</tr>
+<tr>
+<td><code>attributed_to</code></td>
+<td><strong>yes</strong></td>
+<td><code>"user"</code> for facts stated by/about the user; <code>"assistant"</code> for information the assistant supplied</td>
+<td><code>prompts.py:935</code></td>
+</tr>
+<tr>
+<td><code>linked_memory_ids</code></td>
+<td>no</td>
+<td>"IDs of Existing Memories that this new memory relates to. <strong>Use the exact IDs from the Existing Memories list.</strong>"</td>
+<td><code>prompts.py:936</code></td>
+</tr>
+</tbody>
+</table>
+<p>This is the whole attribute story. There is no schema, no key/value bag, no per-entity attribute list —<br />
+one enumerated string, <code>attributed_to</code>, and that is what §2's "there are no attributes" means in<br />
+practice. Note the shape of the required fields: everything the model emits is about <em>the memory</em>, and<br />
+exactly one field is about <em>who the memory belongs to</em>.</p>
+<h3 id="what-phase-45-actually-persists">What Phase 4/5 actually persists</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Step</th>
+<th scope="col">Mechanism</th>
+<th scope="col">Line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stored-hash set</td>
+<td><code>existing_hashes</code> from <code>mem.payload.get("hash")</code> over the Phase 1 results</td>
+<td><code>main.py:1009-1013</code></td>
+</tr>
+<tr>
+<td>Batch-local set</td>
+<td><code>seen_hashes = set()</code> — the same text twice in one response is stored once</td>
+<td><code>main.py:1016</code></td>
+</tr>
+<tr>
+<td>Hash</td>
+<td><code>hashlib.md5(text.encode()).hexdigest()</code></td>
+<td><code>main.py:1022</code></td>
+</tr>
+<tr>
+<td>Dedup test</td>
+<td><code>if mem_hash in existing_hashes or mem_hash in seen_hashes: continue</code></td>
+<td><code>main.py:1023-1026</code></td>
+</tr>
+<tr>
+<td>BM25 copy</td>
+<td><code>text_lemmatized = lemmatize_for_bm25(text)</code></td>
+<td><code>main.py:1028</code></td>
+</tr>
+<tr>
+<td>Payload</td>
+<td><code>data</code>, <code>text_lemmatized</code>, <code>hash</code>, <code>created_at</code>, <code>updated_at</code></td>
+<td><code>main.py:1032-1037</code></td>
+</tr>
+<tr>
+<td>Attribute</td>
+<td><code>if mem.get("attributed_to"): mem_metadata["attributed_to"] = mem["attributed_to"]</code></td>
+<td><code>main.py:1038-1039</code></td>
+</tr>
+<tr>
+<td>Caller metadata</td>
+<td><code>mem_metadata = deepcopy(metadata)</code> first, so tenant keys ride along</td>
+<td><code>main.py:1031</code></td>
+</tr>
+</tbody>
+</table>
+<p>Two properties follow directly. Dedup is <strong>exact-content only</strong> — a paraphrase, a correction, or a<br />
+contradiction hashes differently and is stored beside the old fact. And <code>attributed_to</code> is <em>optional at<br />
+read time</em> despite being required in the contract: the <code>if</code> at <code>1038</code> silently drops an empty or missing<br />
+value rather than failing the record.</p>
+<h3 id="attributed_to-is-promoted-to-top-level-on-every-read-path"><code>attributed_to</code> is promoted to top level on every read path</h3>
+<p>The field is written into <code>payload</code> but returned as a sibling of <code>id</code>/<code>memory</code>/<code>created_at</code>. Six sites<br />
+declare the promotion list, and each verified line is the entry <code>"attributed_to"</code> inside<br />
+<code>promoted_payload_keys</code>:</p>
+<table>
+<thead>
+<tr>
+<th scope="col">Read path</th>
+<th scope="col"><code>promoted_payload_keys</code></th>
+<th scope="col"><code>"attributed_to"</code> entry</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sync <code>get</code></td>
+<td><code>main.py:1238</code></td>
+<td><code>main.py:1244</code></td>
+</tr>
+<tr>
+<td>sync <code>get_all</code></td>
+<td><code>main.py:1356</code></td>
+<td><code>main.py:1362</code></td>
+</tr>
+<tr>
+<td>sync <code>_search_vector_store</code> result build</td>
+<td><code>main.py:1704</code></td>
+<td><code>main.py:1710</code></td>
+</tr>
+<tr>
+<td>async <code>get</code></td>
+<td><code>main.py:2919</code></td>
+<td><code>main.py:2925</code></td>
+</tr>
+<tr>
+<td>async <code>get_all</code></td>
+<td><code>main.py:3037</code></td>
+<td><code>main.py:3043</code></td>
+</tr>
+<tr>
+<td>async search result build</td>
+<td><code>main.py:3391</code></td>
+<td><code>main.py:3397</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>attributed_to</code> appears in the <code>core_and_promoted_keys</code> exclusion set at <code>1248</code> / <code>1365</code> / <code>1713</code> /<br />
+<code>2929</code> / <code>3046</code> / <code>3400</code>, so it is popped from metadata and set on the result — a field that survives<br />
+every path, unlike the one below it.</p>
+<h3 id="the-load-bearing-finding-the-extractors-linked_memory_ids-is-never-read">THE LOAD-BEARING FINDING: the extractor's <code>linked_memory_ids</code> is never read</h3>
+<p>Verbatim, with real output and hit counts:</p>
+<pre><code>$ grep -n 'linked_memory_ids' mem0/memory/main.py
+624:                # Update existing entity's linked_memory_ids
+626:                linked_ids = payload.get(&quot;linked_memory_ids&quot;, [])
+629:                    payload[&quot;linked_memory_ids&quot;] = linked_ids
+641:                    &quot;linked_memory_ids&quot;: [memory_id],
+655:        For each entity whose `linked_memory_ids` contains `memory_id`:
+674:                    linked = payload.get(&quot;linked_memory_ids&quot;, [])
+693:                        new_payload = {**payload, &quot;linked_memory_ids&quot;: remaining}
+1171:                            linked = set(payload.get(&quot;linked_memory_ids&quot;, []))
+1173:                            payload[&quot;linked_memory_ids&quot;] = sorted(linked)
+1189:                                &quot;linked_memory_ids&quot;: sorted(memory_ids),
+1811:                        linked_memory_ids = payload.get(&quot;linked_memory_ids&quot;, [])
+1812:                        if not isinstance(linked_memory_ids, list):
+1815:                        num_linked = max(len(linked_memory_ids), 1)
+1819:                        for memory_id in linked_memory_ids:
+2313:                linked_ids = payload.get(&quot;linked_memory_ids&quot;, [])
+2316:                    payload[&quot;linked_memory_ids&quot;] = linked_ids
+2328:                    &quot;linked_memory_ids&quot;: [memory_id],
+2345:        the same entity rows' linked_memory_ids lists.
+2372:                    linked = payload.get(&quot;linked_memory_ids&quot;, [])
+2391:                        new_payload = {**payload, &quot;linked_memory_ids&quot;: remaining}
+2851:                            linked = set(payload.get(&quot;linked_memory_ids&quot;, []))
+2853:                            payload[&quot;linked_memory_ids&quot;] = sorted(linked)
+2869:                                &quot;linked_memory_ids&quot;: sorted(memory_ids),
+3489:                    linked_memory_ids = payload.get(&quot;linked_memory_ids&quot;, [])
+3490:                    if not isinstance(linked_memory_ids, list):
+3493:                    num_linked = max(len(linked_memory_ids), 1)
+3497:                    for memory_id in linked_memory_ids:
+</code></pre>
+<p><strong>27 hits.</strong> The narrower grep — the one that would find the code reading the field <em>off an extracted<br />
+memory dict</em>:</p>
+<pre><code>$ grep -n 'mem\.get(&quot;linked_memory_ids&quot;)\|mem\[&quot;linked_memory_ids&quot;\]' mem0/memory/main.py
+$ echo $?
+1
+</code></pre>
+<p><strong>Zero hits, exit status 1.</strong> Read the broad output honestly: every one of the 27 lines is the <em>entity<br />
+row's</em> field, not the LLM's. Lines <code>624-641</code> write <code>linked_memory_ids</code> into an entity payload during<br />
+<code>_upsert_entity</code> (<code>main.py:605</code>); <code>655-693</code> strip a memory id back out in<br />
+<code>_remove_memory_from_entity_store</code> (<code>main.py:652</code>); <code>1171-1189</code> are the batch merge union in Phase 7d;<br />
+<code>1811-1819</code> (in <code>_compute_entity_boosts</code>, <code>main.py:1747</code>) and <code>3489-3497</code> (its async twin,<br />
+<code>_compute_entity_boosts_async</code>, <code>main.py:3433</code>) are read-only consumers<br />
+for the count-decay weight; <code>2313-2391</code> and <code>2851-2869</code> are the async twins. Of the 27, twelve read the<br />
+field straight off a row (<code>payload.get(...)</code> / <code>payload[...]</code>: <code>626 629 674 1171 1173 1811 2313 2316 2372
+2851 2853 3489</code>), six pull it into a local first (<code>1812 1815 1819 3490 3493 3497</code>), four write the<br />
+literal into a row (<code>641 1189 2328 2869</code>), two rebuild a row by spread (<code>693 2391</code>), two are docstring<br />
+prose (<code>655 2345</code>) and one is a comment (<code>624</code>). Not one of them touches the dict Phase 2 returned.</p>
+<p>One more corroborating detail: the machinery that would have consumed the LLM's answer exists and is<br />
+inert. <code>uuid_mapping[str(idx)] = mem.id</code> is built at <code>main.py:939</code> (async <code>2622</code>) precisely to turn the<br />
+contract's integer ids <code>"0"</code>, <code>"1"</code> back into real UUIDs — and <code>grep -n uuid_mapping mem0/memory/main.py</code><br />
+returns only the assignment and its initialisation (<code>937</code>, <code>939</code>, <code>2620</code>, <code>2622</code>), with no read.</p>
+<p><strong>Conclusion, stated no more strongly than the evidence:</strong> the extractor proposes a memory↔memory link<br />
+and the add path drops it on the floor. In OSS v2.2.1 the only edges that survive are the<br />
+entity↔memory ones Phase 7 derives from spaCy (<code>main.py:1100-1204</code>). The prompt asks for a graph, and<br />
+the store keeps a bipartite incidence list.</p>
+<h3 id="the-legacy-reconciliation-prompt-is-dead-code">The legacy reconciliation prompt is dead code</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Artefact</th>
+<th scope="col">Line</th>
+<th scope="col">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DEFAULT_UPDATE_MEMORY_PROMPT</code></td>
+<td><code>prompts.py:176</code></td>
+<td>four-op prompt (ADD / UPDATE / DELETE / NONE), still exported</td>
+</tr>
+<tr>
+<td><code>get_update_memory_messages</code></td>
+<td><code>prompts.py:406-407</code></td>
+<td>builds the reconciliation user prompt, <strong>no caller outside <code>prompts.py</code></strong></td>
+</tr>
+</tbody>
+</table>
+<pre><code>$ grep -rn get_update_memory_messages --include=*.py .
+./tests/configs/test_prompts.py:4:def test_get_update_memory_messages():
+./tests/configs/test_prompts.py:11:    result = prompts.get_update_memory_messages(
+./tests/configs/test_prompts.py:18:    result = prompts.get_update_memory_messages(retrieved_old_memory_dict, response_content, None)
+./tests/configs/test_prompts.py:22:def test_get_update_memory_messages_empty_memory():
+./tests/configs/test_prompts.py:24:    result = prompts.get_update_memory_messages(
+./tests/configs/test_prompts.py:32:    result = prompts.get_update_memory_messages(
+./tests/configs/test_prompts.py:40:def test_get_update_memory_messages_non_empty_memory():
+./tests/configs/test_prompts.py:43:    result = prompts.get_update_memory_messages(
+./mem0/configs/prompts.py:406:def get_update_memory_messages(retrieved_old_memory_dict, response_content, custom_update_memory_prompt=None):
+</code></pre>
+<p>Nine hits, of which eight are in <code>tests/configs/test_prompts.py</code> and one is the definition<br />
+itself (<code>prompts.py:406</code>). Nothing under <code>mem0/memory/</code> calls it. It is the single strongest piece of<br />
+evidence that v2.2.1 replaced reconciliation with attribution — the code to reconcile is shipped,<br />
+tested, and unreachable.</p>
+</section>
+<section>
+<h2 id="5-consolidating-entities-and-attributes">§5 Consolidating entities and attributes</h2>
+<p><strong>The blunt answer: v2.2.1's add path is ADD-only. There is no LLM reconciliation pass.</strong> No phase in<br />
+<code>_add_to_vector_store</code> (<code>main.py:881-1220</code>) makes a <em>semantic</em> comparison of a candidate fact against an<br />
+existing one — the only comparison is exact md5 equality (Phase 5, <code>main.py:1009-1026</code>), and the one<br />
+prompt that could have (<code>get_update_memory_messages</code>, <code>prompts.py:406</code>) has no caller outside<br />
+<code>prompts.py</code> (grep above). The design is documented as a choice, not an omission —<br />
+<code>docs/core-concepts/how-it-works.mdx:51</code>:</p>
+<blockquote>
+<p>The automatic extraction path is additive. If a user says, "I moved from Austin to Seattle," Mem0 can<br />
+store the new fact without silently rewriting the old one. Use explicit <code>update</code> or <code>delete</code><br />
+operations when your application needs to correct or remove a memory.</p>
+</blockquote>
+<p>So "consolidation" in this codebase is four small mechanical things, none of which is semantic.</p>
+<h3 id="what-does-consolidate">What DOES consolidate</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">#</th>
+<th scope="col">Mechanism</th>
+<th scope="col">Trigger</th>
+<th scope="col">Path:line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Exact md5 dedup</strong> (stored + within-batch)</td>
+<td>write time</td>
+<td><code>main.py:1009-1026</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Entity-row merge</strong> (same text, or cosine ≥ 0.95)</td>
+<td>write time, Phase 7</td>
+<td><code>main.py:621-631</code>, <code>1170-1176</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Count decay</strong> in the boost weight</td>
+<td><em>scoring</em> time, never write time</td>
+<td><code>main.py:1815-1817</code>, <code>3493-3495</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Explicit maintenance</strong> — adjacency repair + history rows + direct insert</td>
+<td><code>delete</code> / <code>delete_all</code> / <code>reset</code> / <code>update</code></td>
+<td><code>main.py:652-705</code>, <code>storage.py:150/193/227</code>, <code>main.py:1960</code>, <code>1975</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>1. Exact md5 dedup.</strong> <code>hashlib.md5(text.encode()).hexdigest()</code> (<code>main.py:1022</code>) is checked against<br />
+<code>existing_hashes</code> (built from the 10 Phase 1 hits, <code>1009-1013</code>) and against <code>seen_hashes</code> (<code>1016</code>), which<br />
+catches the same sentence emitted twice in one response. Both are exact byte-for-byte content matches —<br />
+there is no similarity threshold, no normalisation, no stemming before hashing. Only this narrow<br />
+mechanism prevents a duplicate row.</p>
+<p><strong>2. Entity-row merge — the only real graph consolidation.</strong> <code>_upsert_entity</code> (<code>main.py:605</code>) resolves a<br />
+candidate entity in two steps and merges rather than duplicating:</p>
+<table>
+<thead>
+<tr>
+<th scope="col">Step</th>
+<th scope="col">Test</th>
+<th scope="col">Line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>exact</td>
+<td>normalised-text dict from <code>_existing_entities_by_text</code> (def <code>586</code>)</td>
+<td><code>main.py:610</code></td>
+</tr>
+<tr>
+<td>semantic</td>
+<td><code>existing[0].score &gt;= 0.95</code></td>
+<td><code>main.py:621</code></td>
+</tr>
+<tr>
+<td>merge</td>
+<td><code>if memory_id not in linked_ids: linked_ids.append(memory_id)</code> then <code>update(vector_id=match.id, vector=None, payload=…)</code></td>
+<td><code>main.py:623-631</code></td>
+</tr>
+</tbody>
+</table>
+<p>The batch path (Phase 7d) does the same with a set union over the whole batch — <code>linked |= memory_ids</code>,<br />
+<code>payload["linked_memory_ids"] = sorted(linked)</code> (<code>main.py:1171-1173</code>) — else a new row is queued with<br />
+<code>"linked_memory_ids": sorted(memory_ids)</code> (<code>main.py:1189</code>). Exact match wins unconditionally over<br />
+semantic (<code>main.py:1167</code>), and ids are only ever <strong>added to</strong> the list. There is no subtraction on the<br />
+write path.</p>
+<p><strong>3. Count decay happens at scoring time.</strong> The code:</p>
+<pre><code class="language-python">num_linked = max(len(linked_memory_ids), 1)
+memory_count_weight = 1.0 / (1.0 + 0.001 * ((num_linked - 1) ** 2))
+boost = similarity * ENTITY_BOOST_WEIGHT * memory_count_weight
+</code></pre>
+<p><code>mem0/memory/main.py:1815-1817</code> (sync <code>_compute_entity_boosts</code>, <code>main.py:1747</code>), async twin at<br />
+<code>main.py:3493-3495</code>. This is an <strong>anti-hub dampener, not a consolidation step</strong>: it never touches a<br />
+payload, never removes an id, never merges two entities. It only deflates the score contribution of an<br />
+entity linked to very many memories — at <code>n=1</code> the weight is exactly <code>1.0</code>, at <code>n=10</code> it is <code>≈0.9251</code>, at<br />
+<code>n=100</code> it is <code>≈0.0926</code>. The adjacency list keeps every edge regardless.</p>
+<p><strong>4. Explicit maintenance — the only path that ever removes an edge.</strong> <code>_remove_memory_from_entity_store</code><br />
+(<code>main.py:652</code>) re-reads each row, strips the id, deletes the entity row if the list empties<br />
+(<code>677-682</code>), and otherwise <strong>re-embeds the entity text</strong> to call <code>update()</code> (<code>684-699</code>) because the<br />
+vector store will not accept a payload-only update there (docstring <code>655-663</code>). It is called from<br />
+<code>delete</code> (<code>2140</code>, inside <code>_delete_memory</code> <code>2114</code>) and <code>update</code> (<code>2109</code>, inside <code>_update_memory</code> <code>2052</code>); async twins at <code>3829</code> / <code>3861</code>. <code>reset</code> (<code>2144</code>) does <strong>not</strong> call it — it wipes the whole collection via <code>self._entity_store.reset()</code> (<code>2168</code>) and drops the handle (<code>2171</code>). Alongside<br />
+it, history is written and read through <code>mem0/memory/storage.py</code> — <code>add_history</code> <code>150</code>,<br />
+<code>batch_add_history</code> <code>193</code>, <code>get_history</code> <code>227</code> — populated by Phase 6 at <code>main.py:1078-1089</code>, exposed as<br />
+<code>Memory.history</code> (<code>main.py:1960</code>), with <code>_create_memory</code> (<code>main.py:1975</code>) as the direct-insert path that<br />
+bypasses extraction entirely.</p>
+<p>Put together: consolidation in v2.2.1 is <em>dedup, node-merge, and explicit deletion</em>. No step weighs two<br />
+statements against each other.</p>
+<h3 id="what-consolidating-does-not-do">What consolidating does NOT do</h3>
+<ul>
+<li><strong>No LLM merge or contradiction resolution in the add path.</strong> The four-op reconciler<br />
+  (<code>prompts.py:176</code>, <code>prompts.py:406</code>) is unreachable from <code>mem0/memory/</code>; <code>add()</code> only ever emits<br />
+<code>event="ADD"</code> (<code>main.py:1209-1212</code>).</li>
+<li><strong>No UPDATE or DELETE of existing facts.</strong> A revised fact is a new row beside the old one; the doc<br />
+  says so outright (<code>how-it-works.mdx:51</code>), and Phase 6 has no update branch (<code>main.py:1047-1098</code>).</li>
+<li><strong>No entity splitting or undo.</strong> Merges are append-only and irreversible — Phase 7d unions ids<br />
+  (<code>main.py:1171-1173</code>) and no code path ever divides one entity row back into two, so a wrong 0.95<br />
+  match at <code>main.py:621</code> is permanent.</li>
+<li><strong>No entity→entity edges.</strong> The only edges are entity↔memory, derived from spaCy in Phase 7<br />
+  (<code>main.py:1100-1204</code>); the LLM's memory↔memory <code>linked_memory_ids</code> is dropped (§4).</li>
+<li><strong>No attributes beyond <code>attributed_to</code>.</strong> One enumerated field, copied through at <code>main.py:1038-1039</code><br />
+  and promoted at <code>main.py:1244</code>; entity rows carry <code>data</code> + <code>entity_type</code> + identity keys and nothing<br />
+  else.</li>
+<li><strong>No cross-collection or global dedup outside the identity-key scope.</strong> The md5 comparison is against<br />
+  the 10 Phase 1 hits filtered by <code>user_id</code>/<code>agent_id</code>/<code>run_id</code> (<code>main.py:1009</code>, <code>926</code>), and the entity<br />
+  lookups are scoped identically — the same fact stored under two sessions exists twice.</li>
+</ul>
+</section>
+<section>
+<h2 id="6-returning-the-entities-and-attributes">§6 Returning the entities and attributes</h2>
+<p>Read time is the only place the entity graph pays for itself — everything §2–§5 built is inert until a<br />
+query arrives. And it pays off as a <strong>ranking boost only, never as extra response payload</strong>: the entity<br />
+rows never leave the process. <code>_compute_entity_boosts</code> (<code>main.py:1747-1827</code>) converts them into a<br />
+<code>{memory_id: float}</code> dict that is handed to <code>score_and_rank</code> (<code>scoring.py:60</code>), and what the caller<br />
+receives is the same <code>MemoryItem</code> list it would have received with the entity store switched off —<br />
+differently ordered. There is no entity field, no triple, no path in the result (§7 proves the negative).</p>
+<h3 id="_search_vector_store-the-nine-steps"><code>_search_vector_store</code> — the nine steps</h3>
+<p><code>def _search_vector_store(self, query, filters, limit, threshold=0.1, explain=False, show_expired=False)</code><br />
+(<code>main.py:1642</code>), called from <code>search()</code> at <code>main.py:1508-1510</code> with <code>limit = top_k</code> (<code>main.py:1477</code>).<br />
+Async twin <code>main.py:3330</code>, same nine steps behind <code>asyncio.to_thread</code>.</p>
+<table>
+<thead>
+<tr>
+<th scope="col">#</th>
+<th scope="col">Step</th>
+<th scope="col">Lines</th>
+<th scope="col">What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Lemmatise + recognise the query</td>
+<td><code>1648-1649</code> (async <code>3335-3336</code>)</td>
+<td><code>query_lemmatized = lemmatize_for_bm25(query)</code> for BM25, then <code>query_entities = extract_entities(query)</code> — the <em>same</em> spaCy recogniser §2 describes, applied symmetrically to the query</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Embed the query</td>
+<td><code>1652</code> (async <code>3339</code>)</td>
+<td><code>self.embedding_model.embed(query, "search")</code>; purpose <code>"search"</code> is what lets asymmetric embedders (e5-style) use a query-side prefix</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Semantic search, over-fetched</td>
+<td><code>1655-1658</code> (async <code>3342</code>)</td>
+<td><code>internal_limit = max(limit * 4, 60)</code> then <code>vector_store.search(..., top_k=internal_limit)</code>. The multiplier is <strong>headroom for reordering</strong>: steps 5–8 can only reorder what step 3 returned, and a memory ranked 40th by cosine can outrank the top hit once BM25 and the entity boost land. The <code>60</code> floor protects a <code>top_k=1..15</code> caller from an empty reordering pool</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Native keyword search</td>
+<td><code>1661-1663</code> (async <code>3348-3350</code>)</td>
+<td><code>vector_store.keyword_search(query=query_lemmatized, top_k=internal_limit, filters=filters)</code>. The <strong>base class returns <code>None</code></strong>: <code>mem0/vector_stores/base.py:68</code> is the stub and <code>:83</code> is <code>return None</code>, with the docstring at <code>:69</code> stating "Returns None if not supported by this store." So BM25 silently degrades to absent rather than erroring</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Normalise BM25</td>
+<td><code>1666-1673</code> (async <code>3353-3360</code>)</td>
+<td><code>get_bm25_params(query, lemmatized=...)</code> (<code>scoring.py:16</code>) picks a sigmoid midpoint/steepness pair from query term count (<code>scoring.py:31-40</code>); <code>normalize_bm25(raw, midpoint, steepness)</code> (<code>scoring.py:43</code>) maps the unbounded raw score into <code>[0, 1]</code> via <code>1/(1+exp(-k*(x-m)))</code> (<code>scoring.py:54</code>). Only positive raw scores are kept (<code>1672</code>)</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Entity boosts</td>
+<td><code>1676-1678</code> (async <code>3365-3366</code>)</td>
+<td><code>if query_entities: entity_boosts = self._compute_entity_boosts(query_entities, filters)</code> — sub-walk below. Skipped entirely when the query recognised nothing</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Build the candidate set</td>
+<td><code>1681-1691</code> (async <code>3367-3379</code>)</td>
+<td><code>candidates</code> is built from <code>semantic_results</code> <strong>only</strong> — keyword results contribute a score, never a candidate. <code>_payload_is_expired(payload)</code> (<code>main.py:442</code>) drops expired rows unless <code>show_expired</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td>Score and rank</td>
+<td><code>1694-1701</code> (async <code>3381-3389</code>)</td>
+<td><code>score_and_rank(semantic_results=candidates, bm25_scores=…, entity_boosts=…, threshold=threshold, top_k=limit, explain=explain)</code></td>
+</tr>
+<tr>
+<td>9</td>
+<td>Format into <code>MemoryItem</code></td>
+<td><code>1704-1745</code> (async <code>3390-3431</code>)</td>
+<td>Pydantic model → dict, promoted keys hoisted, remainder nested, optional <code>score_details</code></td>
+</tr>
+</tbody>
+</table>
+<p>Two consequences worth naming. First, <strong>the entity store can only reorder, never add</strong>: step 7's candidate<br />
+set comes from step 3's semantic results, so an entity-boosted memory that cosine search missed entirely<br />
+is invisible — the boost has nothing to attach to. Second, <strong>BM25 is optional at the store level and<br />
+entity boost is optional at the model level</strong>; a store without <code>keyword_search</code> and an install without the<br />
+<code>[nlp]</code> extra turns a "hybrid" search into plain vector search with no error and no warning<br />
+(<code>main.py:1667</code>, <code>1677</code>).</p>
+<h3 id="_compute_entity_boosts-the-one-hop"><code>_compute_entity_boosts</code> — the one hop</h3>
+<p><code>main.py:1747-1827</code>, docstring <code>1748-1756</code>; async <code>_compute_entity_boosts_async</code> <code>main.py:3433-3505</code>.</p>
+<ol>
+<li><strong>Dedup and cap the query entities</strong> — <code>for entity_type, entity_text in query_entities[:8]</code><br />
+   (<code>main.py:1761</code>), keyed by <code>self._normalize_entity_text</code> (<code>:1762</code>). The <code>[:8]</code> slice is where the cap<br />
+   of <strong>8</strong> lives; entity nine and beyond are silently never looked up. Empty list → <code>return {}</code> (<code>1767-1768</code>).</li>
+<li><strong>Scope the filters</strong> — <code>search_filters</code> is rebuilt from only <code>("user_id", "agent_id", "run_id")</code><br />
+   (<code>main.py:1770</code>), so an entity boost can never cross a tenant boundary even if the caller's filter<br />
+   dict carried something wider.</li>
+<li><strong>Batch-embed the entity texts</strong> — <code>self.embedding_model.embed_batch(entity_texts, "search")</code><br />
+   (<code>main.py:1775</code>), one call for up to 8 texts. A length mismatch is the one failure that is loud enough to<br />
+   abort the whole boost: <code>len(embeddings) != len(entity_texts)</code> warns and <code>return memory_boosts</code> (<code>1777-1783</code>).</li>
+<li><strong>Search the entity collection once per entity</strong> — <code>entity_store.search(query=…, vectors=…, top_k=500,
+   filters=search_filters)</code> (<code>main.py:1788-1790</code>). <strong><code>top_k=500</code></strong> because one query entity may have been<br />
+   merged into up to 500 distinct entity rows by §5's cosine-0.95 pass. Parallelism is 4 in both twins:<br />
+<code>ThreadPoolExecutor(max_workers=4)</code> sync (<code>main.py:1792</code>), <code>asyncio.Semaphore(4)</code> async<br />
+   (<code>main.py:3461</code>).</li>
+<li><strong>Accept a row only at <code>similarity &gt;= 0.5</code></strong> — <code>if similarity &lt; 0.5: continue</code> (<code>main.py:1807</code>, async<br />
+<code>3485</code>). This is a <em>different, looser</em> threshold than the 0.95 write-time merge (<code>main.py:621</code>): 0.5 is<br />
+   "close enough to boost", 0.95 is "close enough to fuse". A non-list <code>linked_memory_ids</code> is skipped<br />
+   (<code>1812-1813</code>).</li>
+<li><strong>Weight by similarity, a global constant, and a hub dampener</strong>:</li>
+</ol>
+<pre><code>num_linked         = max(len(linked_memory_ids), 1)
+memory_count_weight = 1.0 / (1.0 + 0.001 * ((num_linked - 1) ** 2))
+boost              = similarity * ENTITY_BOOST_WEIGHT * memory_count_weight
+</code></pre>
+<p><code>main.py:1815-1817</code> (async <code>3493-3495</code>), <code>ENTITY_BOOST_WEIGHT = 0.5</code> (<code>scoring.py:57</code>, imported at<br />
+<code>main.py:70</code>). So a perfect similarity of 1.0 on a single-memory entity yields exactly <code>0.5</code>, and<br />
+<code>memory_boosts[memory_key] = max(memory_boosts.get(memory_key, 0.0), boost)</code> (<code>main.py:1822</code>, async<br />
+<code>3500</code>) keeps the <strong>max across all matched entities</strong> for a given memory — boosts never sum.</p>
+<p><strong>This is the one and only hop.</strong> Query entity → entity rows (step 4) → their <code>linked_memory_ids</code><br />
+(step 5's payload) → memory ids that the vector query already returned (step 7 of the caller). Nothing<br />
+reads an entity row's payload for anything except <code>linked_memory_ids</code>; no entity id is used as a <em>query</em><br />
+to find other entities; the walk stops after six lines. Everything in §7 follows from that shape.</p>
+<h3 id="score_and_rank-where-the-boost-becomes-a-number"><code>score_and_rank</code> — where the boost becomes a number</h3>
+<p><code>mem0/utils/scoring.py:60-139</code>.</p>
+<pre><code>has_bm25   = bool(bm25_scores)
+has_entity = bool(entity_boosts)
+max_possible = 1.0 + (1.0 if has_bm25 else 0.0) + (ENTITY_BOOST_WEIGHT if has_entity else 0.0)   # :97-101
+
+semantic_score = result.get(&quot;score&quot;) or 0.0
+if semantic_score &lt; threshold:      # :111-112  ← the decisive gate
+    continue
+raw_combined = semantic_score + bm25_score + entity_boost                                         # :118
+combined     = min(raw_combined / max_possible, 1.0)                                              # :119
+</code></pre>
+<p><code>max_possible</code> is therefore <code>1.0</code>, <code>1.5</code>, <code>2.0</code> or <code>2.5</code> depending on which signals are non-empty<br />
+(docstring <code>scoring.py:77-81</code>), which is why the boost's 0.5 ceiling is <em>half a semantic unit</em> rather<br />
+than a full one.</p>
+<p><strong>The decisive detail is the order of operations.</strong> <code>threshold</code> gates the <strong>semantic score first</strong><br />
+(<code>scoring.py:111-112</code>), before BM25 and the entity boost are added. The docstring says it outright<br />
+(<code>scoring.py:74-75</code>): <em>"Threshold gates the semantic score BEFORE combining -- candidates below the<br />
+threshold are excluded even if BM25/entity would boost them."</em> The consequence is counter-intuitive and<br />
+worth stating plainly: a memory that the entity graph matched at similarity 1.0, with a perfect BM25<br />
+score, is still dropped if its cosine score is 0.099 — the boost cannot rescue a candidate, only promote<br />
+one that already cleared the bar. The gate is the pre-existing vector threshold, not a hybrid threshold.</p>
+<p><code>explain=True</code> attaches a per-result <code>score_details</code> dict — <code>semantic_score</code>, <code>bm25_score</code>,<br />
+<code>entity_boost</code>, <code>raw_score</code>, <code>max_possible_score</code>, <code>final_score</code>, <code>threshold</code> (<code>scoring.py:126-135</code>) —<br />
+carried through at <code>main.py:1740-1741</code>. It is the only way an operator can see that an entity boost<br />
+fired at all. Sorting is <code>scored.sort(key=lambda x: x["score"], reverse=True)</code> then <code>[:top_k]</code><br />
+(<code>scoring.py:138-139</code>).</p>
+<h3 id="result-assembly-what-the-caller-actually-gets">Result assembly — what the caller actually gets</h3>
+<p><code>main.py:1704-1745</code>.</p>
+<pre><code class="language-python">promoted_payload_keys = [&quot;user_id&quot;, &quot;agent_id&quot;, &quot;run_id&quot;, &quot;actor_id&quot;, &quot;role&quot;,
+                         &quot;attributed_to&quot;, &quot;expiration_date&quot;]                      # :1704-1712
+memory_item_dict = MemoryItem(id=scored[&quot;id&quot;], memory=payload.get(&quot;data&quot;, &quot;&quot;),
+                              hash=payload.get(&quot;hash&quot;), created_at=payload.get(&quot;created_at&quot;),
+                              updated_at=payload.get(&quot;updated_at&quot;),
+                              score=scored[&quot;score&quot;]).model_dump()                 # :1722-1729
+for key in promoted_payload_keys:                                             # :1731-1733
+    if key in payload: memory_item_dict[key] = payload[key]
+additional_metadata = {k: v for k, v in payload.items() if k not in core_and_promoted_keys}
+</code></pre>
+<p><code>memory</code> is <code>payload["data"]</code> verbatim — the stored fact, not a summary of it. <code>attributed_to</code> is in<br />
+<code>promoted_payload_keys</code>, so §3's one attribute arrives as a <strong>top-level field on each result</strong> rather<br />
+than buried in metadata; everything not in <code>core_and_promoted_keys</code> (<code>main.py:1713</code>, which also excludes<br />
+<code>text_lemmatized</code>) is nested under <code>metadata</code> (<code>1735-1739</code>). Candidates with no <code>payload["data"]</code> are<br />
+dropped rather than returned half-formed (<code>1719-1720</code>). Note what is <em>absent</em>: no <code>entity</code>, no<br />
+<code>entities</code>, no <code>linked_memory_ids</code>, no <code>relations</code> — the entity boost survives only as the number in<br />
+<code>score</code>.</p>
+<p><strong><code>attributed_to</code> is payload-only, so it is never an input to retrieval.</strong> It is written into the memory<br />
+payload (<code>main.py:1038-1039</code>) and promoted back out at read time, but nothing in the recognize, inject or<br />
+score path ever reads it: entity extraction runs on the memory <em>text</em> alone (<code>extract_entities(text)</code>,<br />
+<code>main.py:714</code>), and the entity rows it produces are embedded from <code>entity_text</code> alone (<code>main.py:608</code>,<br />
+<code>1128</code>), so <code>attributed_to</code> is not part of any entity's embedding, any filter the boost applies, or any<br />
+constant in the table above. Its only effect on ranking is indirect — an <code>assistant</code>-attributed fact<br />
+competes on the same semantic score as a <code>user</code>-attributed one. It labels a fact's provenance for the<br />
+caller; it does not participate in the graph.</p>
+<h3 id="search-the-public-surface"><code>search()</code> — the public surface</h3>
+<p><code>def search(self, query, *, top_k=20, filters=None, threshold=0.1, rerank=False, explain=False,
+reference_date=None, show_expired=False, **kwargs)</code> (<code>main.py:1393-1405</code>). It resolves filters,<br />
+calls <code>_search_vector_store</code> (<code>1508-1510</code>), optionally reranks, and returns.</p>
+<pre><code class="language-python">if rerank and self.reranker and original_memories:                            # :1514
+    reranked_memories = self.reranker.rerank(query, original_memories, limit)  # :1516
+...
+return {&quot;results&quot;: original_memories}                                         # :1536
+</code></pre>
+<p>The reranker (a <code>MemoryConfig</code> field, <code>configs/base.py:46-49</code>) runs <strong>after</strong> scoring and reorders the<br />
+already-boosted list; a failure is caught and the original order kept (<code>1518-1519</code>). The return value is<br />
+<code>{"results": [...]}</code> (async twin <code>main.py:3224</code>) — a dict with exactly one key.</p>
+<p><strong>Stated plainly: an OSS v2.2.1 response contains no <code>relations</code> key, no entity list, and no graph<br />
+payload.</strong> The entity graph is spent inside <code>score_and_rank</code> and does not reach the caller.</p>
+<h3 id="every-constant-in-the-read-path">Every constant in the read path</h3>
+<p>Verified against source, and against the config schema: <code>grep -rn -i "entity_boost\|boost_weight\|bm25\|top_k_multiplier\|score_threshold" mem0/configs/base.py</code> → <strong>no hits</strong>, and <code>MemoryConfig</code><br />
+(<code>configs/base.py:29-57</code>) declares only <code>vector_store</code>, <code>llm</code>, <code>embedder</code>, <code>history_db_path</code>, <code>reranker</code>,<br />
+<code>version</code>, <code>custom_instructions</code>.</p>
+<table>
+<thead>
+<tr>
+<th scope="col">Constant</th>
+<th scope="col">Value</th>
+<th scope="col">Lives at</th>
+<th scope="col">Controls</th>
+<th scope="col">Configurable?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ENTITY_BOOST_WEIGHT</code></td>
+<td><code>0.5</code></td>
+<td><code>mem0/utils/scoring.py:57</code> (imported <code>main.py:70</code>)</td>
+<td>Ceiling of a single-memory entity boost, and the <code>+0.5</code> added to <code>max_possible</code> (<code>scoring.py:101</code>)</td>
+<td><strong>No</strong> — module constant</td>
+</tr>
+<tr>
+<td>Entity dedup cosine</td>
+<td><code>&gt;= 0.95</code></td>
+<td><code>main.py:621</code>, <code>main.py:1166</code></td>
+<td>Whether two entity rows become one node (§5)</td>
+<td><strong>No</strong> — literal in the call</td>
+</tr>
+<tr>
+<td>Entity match threshold</td>
+<td><code>&gt;= 0.5</code></td>
+<td><code>main.py:1807</code>, <code>main.py:3485</code></td>
+<td>Whether a query entity's row is allowed to boost at all</td>
+<td><strong>No</strong> — literal in the loop</td>
+</tr>
+<tr>
+<td>Query-entity cap</td>
+<td><code>8</code></td>
+<td><code>main.py:1761</code>, <code>main.py:3437</code> (<code>query_entities[:8]</code>)</td>
+<td>How many recognised query entities are looked up</td>
+<td><strong>No</strong> — slice literal</td>
+</tr>
+<tr>
+<td>Boost search <code>top_k</code></td>
+<td><code>500</code></td>
+<td><code>main.py:1789</code>, <code>main.py:3469</code></td>
+<td>Entity rows harvested per query entity</td>
+<td><strong>No</strong> — keyword arg literal</td>
+</tr>
+<tr>
+<td>Semantic over-fetch</td>
+<td><code>max(limit * 4, 60)</code></td>
+<td><code>main.py:1655</code>, <code>main.py:3342</code></td>
+<td>Size of the reorderable pool (step 3)</td>
+<td><strong>No</strong> — literal; only the outer <code>limit</code> (= caller <code>top_k</code>, <code>main.py:1477</code>) varies</td>
+</tr>
+<tr>
+<td>BM25 sigmoid params</td>
+<td><code>(5.0,0.7)</code> / <code>(7.0,0.6)</code> / <code>(9.0,0.5)</code> / <code>(10.0,0.5)</code> / <code>(12.0,0.5)</code></td>
+<td><code>scoring.py:31-40</code></td>
+<td>Midpoint/steepness by query-term count (<code>&lt;=3 / &lt;=6 / &lt;=9 / &lt;=15 / else</code>)</td>
+<td><strong>No</strong> — hard-coded table</td>
+</tr>
+<tr>
+<td>Final score threshold</td>
+<td>default <code>0.1</code></td>
+<td>param default <code>main.py:1399</code>; forwarded <code>main.py:1642</code>; <strong>read</strong> at <code>scoring.py:111</code></td>
+<td>Semantic-score gate applied <em>before</em> combining</td>
+<td>Partly — a <code>search()</code> <strong>argument</strong>, not a <code>MemoryConfig</code> field; <code>None</code> coerced to <code>0.1</code> (<code>main.py:1644-1645</code>)</td>
+</tr>
+<tr>
+<td>Count decay</td>
+<td><code>1/(1+0.001*(n-1)^2)</code></td>
+<td><code>main.py:1816</code>, <code>main.py:3494</code></td>
+<td>Anti-hub dampener on wide entities (<code>n=1</code>→<code>1.0</code>, <code>n=10</code>→<code>≈0.9251</code>, <code>n=100</code>→<code>≈0.0926</code>)</td>
+<td><strong>No</strong> — literal coefficients</td>
+</tr>
+</tbody>
+</table>
+<p>One correction to the dossier, since it matters for anyone tuning this: the final-score threshold is not<br />
+read at <code>scoring.py:121</code> (that line builds the result dict) — it is read at <code>scoring.py:111-112</code>, and the<br />
+0.1 itself is a <code>search()</code> signature default at <code>main.py:1399</code>, not a module constant anywhere.</p>
+</section>
+<section>
+<h2 id="7-reconstructing-full-memories-out-of-the-graph-paths">§7 Reconstructing full memories out of the graph paths</h2>
+<p><strong>This capability does not exist in OSS v2.2.1.</strong> Nothing in this repository walks a graph path, and<br />
+nothing reconstructs a memory. A search returns the stored memories themselves, reordered — §6's whole<br />
+read path ends in <code>return {"results": original_memories}</code> (<code>main.py:1536</code>), and every element of that list<br />
+is a row that came out of the vector store, not a synthesis of several rows.</p>
+<h3 id="the-absence-as-a-grep">The absence, as a grep</h3>
+<pre><code>$ grep -rn -i &quot;multi-hop\|multi_hop\|traverse\|graph_path&quot; mem0/ server/ cli/
+server/dashboard/pnpm-lock.yaml:1906:  estraverse@5.3.0:
+server/dashboard/pnpm-lock.yaml:2302:  json-schema-traverse@0.4.1:
+server/dashboard/pnpm-lock.yaml:4256:      json-schema-traverse: 0.4.1
+server/dashboard/pnpm-lock.yaml:4847:      estraverse: 5.3.0
+server/dashboard/pnpm-lock.yaml:4863:      estraverse: 5.3.0
+server/dashboard/pnpm-lock.yaml:4920:      estraverse: 5.3.0
+server/dashboard/pnpm-lock.yaml:4924:      estraverse: 5.3.0
+server/dashboard/pnpm-lock.yaml:4926:  estraverse@5.3.0: {}
+server/dashboard/pnpm-lock.yaml:5319:  json-schema-traverse@0.4.1: {}
+
+</code></pre>
+<p>Nine hits, and <strong>all nine are transitive-dependency entries in the dashboard's pnpm lockfile</strong> — two npm<br />
+packages (<code>estraverse</code>, <code>json-schema-traverse</code>) that happen to contain the substring. Restricted to<br />
+Python:</p>
+<pre><code>$ grep -rn -i &quot;multi-hop\|multi_hop\|traverse\|graph_path&quot; --include=*.py mem0/ server/ cli/
+$ echo $?
+1
+</code></pre>
+<p><strong>Zero hits, exit status 1.</strong> No traversal primitive, no path query, no hop counter, no variable named<br />
+after a graph walk. The dossier's note that this grep returns "0 hits" is right about Python and wrong<br />
+about the raw command: the honest number is 9 hits / 0 in Python, and the 9 are lockfile noise.</p>
+<h3 id="what-does-exist-one-hop-then-verbatim">What DOES exist: one hop, then verbatim</h3>
+<p>The nearest thing to "reconstructing a memory from a path" is §6's boost, and it is a <em>ranking</em> device<br />
+that happens to read the adjacency. Restated as the only chain the code can follow:</p>
+<pre><code>query entity (spaCy, main.py:1649)
+  → entity rows at similarity &gt;= 0.5 (main.py:1788-1807)
+    → row.payload[&quot;linked_memory_ids&quot;] (main.py:1811)
+      → {memory_id: boost} (main.py:1822)
+        → applied to candidates the vector query ALREADY returned (main.py:1681-1691, scoring.py:116)
+</code></pre>
+<p>Three properties of that chain matter here.</p>
+<ul>
+<li><strong>The memory uuids are already in the candidate set.</strong> <code>entity_boosts</code> is keyed by memory id and looked<br />
+  up as <code>entity_boosts.get(mem_id_str, 0.0)</code> (<code>scoring.py:116</code>) — a boost whose id is not in<br />
+<code>semantic_results</code> is discarded. The graph does not <em>fetch</em> anything; it reweights a list it was handed.</li>
+<li><strong>Nothing walks entity→entity.</strong> <code>entity_store.search</code> is called with an embedded <em>query string</em><br />
+  (<code>main.py:1788-1790</code>); no code path ever takes a matched entity row's id, text, or embedding and uses it<br />
+  as a query for another entity row. The <code>top_k=500</code> in that same call is breadth <em>within one hop</em>, not a<br />
+  second hop.</li>
+<li><strong>Nothing re-summarises.</strong> There is no LLM call anywhere in <code>_search_vector_store</code><br />
+  (<code>main.py:1642-1745</code>) — steps 1–9 are lemmatisation, embedding, two store queries, arithmetic, and<br />
+  packaging. The memories come back <strong>verbatim</strong>: <code>memory=payload.get("data", "")</code> (<code>main.py:1724</code>), the<br />
+  exact string written by §3's extraction. Three memories that all mention one entity come back as three<br />
+  separate <code>MemoryItem</code>s with three separate scores — never merged into one reconstructed fact, and with<br />
+  no marker that they share an entity.</li>
+</ul>
+<h3 id="the-triple-shaped-formatter-with-no-callers">The triple-shaped formatter with no callers</h3>
+<p><code>format_entities</code> (<code>mem0/memory/utils.py:79-88</code>) is the only place in the tree that renders an<br />
+<code>source -- relationship -- destination</code> triple — exactly the shape a reconstructed path would be printed<br />
+in:</p>
+<pre><code class="language-python">def format_entities(entities):                                        # utils.py:79
+    if not entities:
+        return &quot;&quot;
+    formatted_lines = []
+    for entity in entities:
+        simplified = f&quot;{entity['source']} -- {entity['relationship']} -- {entity['destination']}&quot;
+        formatted_lines.append(simplified)
+    return &quot;\n&quot;.join(formatted_lines)
+</code></pre>
+<pre><code>$ grep -rn &quot;format_entities&quot; --include=*.py .
+./mem0/memory/utils.py:79:def format_entities(entities):
+</code></pre>
+<p><strong>One hit: the definition.</strong> Zero callers, zero tests. It is a formatter for a data shape<br />
+(<code>{source, relationship, destination}</code>) that no writer in v2.2.1 produces — entity rows carry<br />
+<code>data</code>/<code>entity_type</code>/<code>linked_memory_ids</code> (<code>main.py:638-643</code>) and nothing with a <code>relationship</code> key.</p>
+<h3 id="the-rest-of-the-removed-graph-integration">The rest of the removed graph integration</h3>
+<p>The residue is unambiguous once grepped. Each item below is a leftover from the Neo4j/Memgraph era that<br />
+<code>docs/platform/features/graph-memory.mdx:22</code> describes as superseded ("Earlier versions connected an<br />
+external graph database (Neo4j and others) and exposed a <code>relations</code> field").</p>
+<pre><code>$ grep -rn &quot;sanitize_relationship_for_cypher\|remove_spaces_from_entities&quot; --include=*.py . \
+    | cut -d: -f1 | sort | uniq -c
+      3 ./mem0/memory/utils.py
+     12 ./tests/memory/test_memory_utils.py
+</code></pre>
+<p>The only three hits in library code are the two definitions and one internal call —<br />
+<code>sanitize_relationship_for_cypher</code> at <code>utils.py:253</code>, <code>remove_spaces_from_entities</code> at <code>utils.py:305</code>, and<br />
+<code>utils.py:326</code> wiring the second to the first. <strong>Every other reference is in<br />
+<code>tests/memory/test_memory_utils.py</code></strong>, whose own test name says what it is testing:<br />
+<code>"""Neo4j / Memgraph path: special characters mapped via sanitize_relationship_for_cypher."""</code><br />
+(<code>tests/memory/test_memory_utils.py:165</code>). A Cypher sanitiser with no Cypher caller.</p>
+<pre><code>$ grep -rn &quot;enable_graph&quot; mem0/
+$ echo $?
+1
+</code></pre>
+<p><strong>Zero hits.</strong> The flag that gated the old integration is gone from the library entirely; it survives only<br />
+as a doc paragraph (<code>docs/platform/features/graph-memory.mdx:93</code>, "The <code>enable_graph</code> flag is no longer<br />
+needed"). Likewise the exception still advertises a dependency nothing imports —<br />
+<code>mem0/exceptions.py:396-397</code>:</p>
+<pre><code class="language-python">details={&quot;package&quot;: &quot;kuzu&quot;, &quot;feature&quot;: &quot;graph_store&quot;},
+suggestion=&quot;Please install the required dependencies: pip install kuzu&quot;
+</code></pre>
+<p>A <code>DependencyError</code> example naming <code>kuzu</code> and a <code>graph_store</code> feature, in a release with no graph store.</p>
+<h3 id="relations-is-read-once-and-that-once-is-dead-for-oss"><code>relations</code> is read once, and that once is dead for OSS</h3>
+<pre><code>$ grep -rn '&quot;relations&quot;' --include=*.py mem0/ server/ cli/
+mem0/proxy/main.py:181:            if relevant_memories.get(&quot;relations&quot;):
+mem0/proxy/main.py:182:                entities = [entity for entity in relevant_memories[&quot;relations&quot;]]
+</code></pre>
+<p>Exactly two lines, both in <code>_format_query_with_memories</code> (<code>mem0/proxy/main.py:175-185</code>):</p>
+<pre><code class="language-python">entities = []
+if isinstance(self.mem0_client, mem0.memory.main.Memory):                    # :179  ← OSS branch
+    memories_text = &quot;\n&quot;.join(memory[&quot;memory&quot;] for memory in relevant_memories[&quot;results&quot;])
+    if relevant_memories.get(&quot;relations&quot;):                                   # :181
+        entities = [entity for entity in relevant_memories[&quot;relations&quot;]]     # :182
+elif isinstance(self.mem0_client, mem0.client.main.MemoryClient):            # :183  ← Platform branch
+    memories_text = &quot;\n&quot;.join(memory[&quot;memory&quot;] for memory in relevant_memories)
+return f&quot;- Relevant Memories/Facts: {memories_text}\n\n- Entities: {entities}\n\n- User Question: …&quot;  # :185
+</code></pre>
+<p>The branch that even <em>looks</em> for the key runs only when the client is the OSS <code>Memory</code> class<br />
+(<code>:179</code>) — and OSS <code>search()</code> returns <code>{"results": [...]}</code> with one key (<code>main.py:1536</code>, <code>:3224</code>). So<br />
+<code>.get("relations")</code> is always <code>None</code> on that branch, <code>entities</code> stays <code>[]</code>, and the <code>- Entities:</code> section<br />
+of the proxy's prompt is <strong>always empty for OSS</strong>. The code was written for the external graph store and<br />
+was never removed when it went away: the check is not broken, it is unreachable.</p>
+<h3 id="the-docs-state-the-split">The docs state the split</h3>
+<p><code>docs/core-concepts/how-it-works.mdx:64</code>, verbatim:</p>
+<blockquote>
+<p>Platform retrieval fuses these signals in the managed service, where the entity signal is powered by<br />
+built-in <a href="/platform/features/graph-memory">Graph Memory</a>. OSS retrieval depends on your configured<br />
+vector store and optional reranker, and boosts on entity overlap alone: it has no graph memory.</p>
+</blockquote>
+<p>Same file, <code>:49</code>, on what the OSS entity store is for: entity extraction stores entities "for entity<br />
+matching at search time. On Platform these entities also become the nodes of Graph Memory."</p>
+<p><code>docs/platform/features/graph-memory.mdx</code> describes what the managed service adds — and even <em>it</em> refuses<br />
+the path vocabulary. <code>:8</code>: "Graph Memory is <strong>built in</strong>… It runs natively inside the platform and is<br />
+always on." <code>:39</code>: memories connected to query entities "receive a ranking boost, which is combined with<br />
+semantic (vector) and keyword (BM25) scores into the single <code>score</code> returned on each result." <code>:55</code>: it<br />
+"does not assign typed, labeled relationships between entities… connections are inferred from co-occurrence<br />
+rather than declared." And <code>:44</code>, verbatim:</p>
+<blockquote>
+<p>Graph Memory affects <strong>ranking</strong>, not the response shape. Search results come back in the normal format<br />
+with a combined <code>score</code>; there is no separate graph payload to parse.</p>
+</blockquote>
+<p><code>:93</code> closes the loop on the key itself: "<code>relations</code> is always an empty list regardless of whether you<br />
+send it"; <code>:94</code>: "The standalone <code>relations</code> field that the external graph store returned is no longer<br />
+populated." So even on the Platform — where a real graph exists — there is nothing to reconstruct <em>from</em>:<br />
+the graph is consumed inside ranking and never serialised.</p>
+<h3 id="a-different-notion-of-entity-serverroutersentitiespy">A different notion of "entity": <code>server/routers/entities.py</code></h3>
+<pre><code>$ sed -n '14,17p;44,58p' server/routers/entities.py
+SCAN_LIMIT = 10_000
+
+EntityType = Literal[&quot;user&quot;, &quot;agent&quot;, &quot;run&quot;]
+TYPE_TO_FIELD: dict[EntityType, str] = {&quot;user&quot;: &quot;user_id&quot;, &quot;agent&quot;: &quot;agent_id&quot;, &quot;run&quot;: &quot;run_id&quot;}
+def list_entities(_auth=Depends(verify_auth)):
+    buckets: dict[tuple[EntityType, str], dict[str, Any]] = defaultdict(
+        lambda: {&quot;total_memories&quot;: 0, &quot;created_at&quot;: None, &quot;updated_at&quot;: None}
+    )
+
+    for payload in _iter_payloads():
+        created = _parse_timestamp(payload.get(&quot;created_at&quot;))
+        updated = _parse_timestamp(payload.get(&quot;updated_at&quot;)) or created
+
+        for entity_type, field in TYPE_TO_FIELD.items():
+            value = payload.get(field)
+            if not value:
+                continue
+            bucket = buckets[(entity_type, str(value))]
+            bucket[&quot;total_memories&quot;] += 1
+</code></pre>
+<p><code>list_entities</code> (<code>server/routers/entities.py:44</code>) is an admin/tenancy endpoint, not a graph endpoint. It<br />
+scans up to <code>SCAN_LIMIT = 10_000</code> memory payloads (<code>:14</code>, <code>:29</code>) and buckets them by the <strong>identity keys</strong><br />
+<code>user_id</code>/<code>agent_id</code>/<code>run_id</code> (<code>:17</code>, <code>:53-57</code>), counting memories and tracking min <code>created_at</code> /<br />
+max <code>updated_at</code> per bucket (<code>:58-62</code>). What it calls an "entity" is a <strong>tenant id</strong>; the <code>Entity</code> model<br />
+(<code>:20-25</code>) has <code>id</code>, <code>type</code>, <code>total_memories</code>, timestamps and no mention of <code>entity_type</code>, <code>data</code>, or<br />
+<code>linked_memory_ids</code>. It never touches <code>entity_store</code>. Someone reading <code>GET /entities</code> expecting the graph's<br />
+nodes gets a list of user/agent/run ids.</p>
+<h3 id="what-reconstructing-a-memory-from-a-path-would-require">What reconstructing a memory from a path would require</h3>
+<p>Six requirements, each named against the specific thing the code lacks.</p>
+<table>
+<thead>
+<tr>
+<th scope="col">#</th>
+<th scope="col">Requirement</th>
+<th scope="col">What v2.2.1 has instead</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Persistent entity→entity edges with a writer.</strong> Every hop needs an edge table someone populates</td>
+<td>No writer exists. Entity rows store two facts about one node (<code>data</code>, <code>entity_type</code>) and one adjacency list to <em>memories</em> (<code>main.py:638-643</code>); <code>linked_memory_ids</code> never contains an entity id</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Typed, attributed relations.</strong> A path is only meaningful if the edges are labelled and carry provenance</td>
+<td>The entity payload has no <code>relationship</code>, <code>source</code>, <code>destination</code>, weight, or confidence field — only <code>data</code>/<code>entity_type</code>/<code>linked_memory_ids</code>/identity keys (<code>main.py:638-643</code>), and the docs confirm no typed relationships are assigned (<code>graph-memory.mdx:55</code>)</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>A traversal primitive over the entity collection.</strong> A walk needs a "neighbours of this node" call</td>
+<td>The entity store is used through exactly six operations — <code>search</code>, <code>search_batch</code>, <code>insert</code>, <code>update</code>, <code>delete</code>, <code>list</code> (<code>main.py:589-1196</code>) — all single-record, all keyed by an embedded string. There is no <code>neighbors()</code>, no <code>traverse()</code>, no hop parameter (§7 grep: zero Python hits)</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>A synthesis step over the collected memories.</strong> Reconstructing means composing one fact from several rows</td>
+<td>No such call. <code>_search_vector_store</code> (<code>main.py:1642-1745</code>) contains no LLM invocation; the memories are returned verbatim via <code>memory=payload.get("data", "")</code> (<code>main.py:1724</code>). <code>format_entities</code> is the only triple formatter and has zero callers (<code>utils.py:79</code>)</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Memory↔memory edges resolved from the extractor's own <code>linked_memory_ids</code>.</strong> The LLM already proposes links; a path could be built from them</td>
+<td>Dropped: <code>grep 'mem\.get("linked_memory_ids")\|mem\["linked_memory_ids"\]' mem0/memory/main.py</code> has zero hits (§4), and the <code>uuid_mapping</code> built to resolve them (<code>main.py:937-939</code>) is written and never read. The graph stays bipartite entity↔memory</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>A response field to carry the path.</strong> A reconstructed memory needs somewhere to put its provenance</td>
+<td><code>search()</code> returns <code>{"results": [...]}</code> (<code>main.py:1536</code>, async <code>:3224</code>); <code>MemoryItem</code> (<code>configs/base.py:17-26</code>) has <code>id, memory, hash, metadata, score, created_at, updated_at</code> — no <code>relations</code>, no <code>entities</code>, no <code>path</code>. The one reader of <code>relations</code> (<code>proxy/main.py:181-182</code>) is dead for OSS</td>
+</tr>
+</tbody>
+</table>
+<p>Read together: (1)+(2) are a schema nobody writes, (3) is a primitive nobody calls, (4)+(5) are a<br />
+composition nobody performs, and (6) is a field nobody returns. That is why "reconstructing full memories<br />
+out of graph paths" is not a feature that is switched off in v2.2.1 — it is not a feature.</p>
+</section>
+<section>
+<h2 id="8-gaps-what-this-means-and-the-immediate-next-steps">§8 Gaps, what this means, and the immediate next steps</h2>
+<h3 id="gaps">Gaps</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Gap</th>
+<th scope="col">Consequence</th>
+<th scope="col">Where the code decides it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>The extractor proposes <code>linked_memory_ids</code> and nothing reads it</strong> (§4) — the field is in the output contract</td>
+<td>The memory↔memory edges the model is explicitly asked to produce never exist; the graph stays <strong>strictly bipartite entity↔memory</strong>, so no path can ever leave the memory layer</td>
+<td>Declared <code>prompts.py:936</code>, contract <code>920-941</code>; dropped at payload assembly <code>main.py:1032-1039</code>; the resolver built for it, <code>uuid_mapping</code> (<code>main.py:937-939</code>), is written and never read</td>
+</tr>
+<tr>
+<td><strong>The merge threshold is 0.95 cosine on <code>en_core_web_sm</code> embeddings</strong>, and merges are <strong>append-only</strong></td>
+<td>One bad merge permanently fuses two entities' memories — and the only removal path (<code>_remove_memory_from_entity_store</code>, <code>main.py:652</code>) <em>unions away memory ids</em>, it never splits a node back apart</td>
+<td><code>_upsert_entity</code> merge region <code>main.py:621-631</code> (<code>semantic_match = existing[0] if existing and existing[0].score &gt;= 0.95</code>); the batched Phase 7d form uses <code>matches[0]</code> at <code>main.py:1166</code>, unioned <code>1171-1173</code></td>
+</tr>
+<tr>
+<td><strong>Recognition is English-only spaCy</strong> and <code>extract_entities</code> returns <code>[]</code> when the model is missing</td>
+<td>The graph silently degrades to nothing on a non-English or model-less install while <code>add()</code> still succeeds — no error, no warning; the memories are stored, just unlinked (§3 "non-fatal by design")</td>
+<td><code>mem0/utils/entity_extraction.py:751-758</code>: <code>nlp = get_nlp_full()</code> → <code>if nlp is None: return []</code></td>
+</tr>
+<tr>
+<td><strong>Every boost constant is hard-coded</strong> — cap <code>8</code> query entities, match <code>0.5</code>, weight <code>0.5</code>, <code>top_k=500</code>, dampener <code>1/(1+0.001*(n-1)^2)</code></td>
+<td>Tuning the graph means forking the file; none of it is reachable from <code>MemoryConfig</code> (<code>configs/base.py:29-57</code>). Enumerated in §6's constants table, which covers every boost and scoring constant (pool-sizing literals such as <code>max_workers=4</code> at <code>main.py:1792</code> are excluded)</td>
+<td><code>main.py:1761</code> (<code>[:8]</code>), <code>main.py:1807</code> (<code>&gt;= 0.5</code>), <code>scoring.py:57</code> (<code>ENTITY_BOOST_WEIGHT</code>), <code>main.py:1789</code> (<code>top_k=500</code>), <code>main.py:1816</code> (dampener)</td>
+</tr>
+<tr>
+<td><strong>No typed relations, and no attributes on entities beyond <code>entity_type</code></strong> (the only attribute in the system is memory-level <code>attributed_to</code>)</td>
+<td>A "path" can only ever mean <em>co-occurrence</em>: two memories that both mention an entity. There is nothing to label an edge with and nothing to reconstruct <em>from</em> (§7, requirement 2)</td>
+<td>Entity payload is <code>data</code> + <code>entity_type</code> + <code>linked_memory_ids</code> + identity keys only, <code>main.py:638-643</code>; no <code>relationship</code>/<code>source</code>/<code>destination</code> anywhere except the callerless <code>format_entities</code> (<code>utils.py:79-88</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="what-this-means">What this means</h3>
+<p>The entity layer buys exactly two things, and both are worth having: a <strong>retrieval boost at query time</strong><br />
+(§6 — up to <code>0.5</code> added to a hit's <em>combined raw</em> score, <code>scoring.py:57</code>, <code>:101</code>, though the divisor caps the contribution to the returned <code>score</code> at 0.5/2.5 = <code>0.2</code> with BM25 active, <code>scoring.py:119</code>) and a <strong>coarse co-occurrence index you<br />
+can inspect</strong> (§3 — a second vector collection at <code>&lt;collection&gt;_entities</code> whose rows carry <code>data</code>,<br />
+<code>entity_type</code> and <code>linked_memory_ids</code>). It does not buy a knowledge graph. Everything §2–§7 describes is<br />
+machinery for recognising strings, embedding them, and adding a number to a ranking; the only durable<br />
+structure is a flat many-to-many between entity rows and memory ids.</p>
+<p>"Reconstructing a full memory from graph paths" is not a missing config flag, a disabled branch, or a<br />
+feature gated behind a plan tier inside this codebase. There is <strong>no writer of entity→entity edges</strong><br />
+(<code>linked_memory_ids</code> holds memory ids only, <code>main.py:638-643</code>), <strong>no traversal primitive</strong> (§7's grep over<br />
+<code>multi_hop</code>/<code>traverse</code>/<code>graph_path</code> is 0 hits in Python), and <strong>no synthesis call</strong> anywhere in<br />
+<code>_search_vector_store</code> (<code>main.py:1642-1745</code>). It is absent by construction — three primitives that were<br />
+never written — not absent by default.</p>
+<p>The managed Platform does build the graph natively, and the repository says so plainly:<br />
+<code>docs/core-concepts/how-it-works.mdx:64</code> draws the line ("Platform retrieval fuses these signals in the<br />
+managed service… OSS retrieval… has no graph memory") and <code>docs/platform/features/graph-memory.mdx:8</code><br />
+describes it as "built in… always on". If a real graph is the requirement, that is a <strong>Platform feature,<br />
+not an OSS one</strong> — and be precise about the boundary: nothing in the numbers quoted in §1–§7 is Platform<br />
+behaviour. Those are measurements of <code>mem0ai</code> 2.2.1's <code>Memory</code> class on a local vector store, and the<br />
+Platform's graph is a different implementation behind a different client (<code>proxy/main.py:183</code>), one that<br />
+consumes its graph inside ranking and never serialises it (<code>graph-memory.mdx:44</code>, <code>:93-94</code>).</p>
+<h3 id="immediate-next-steps">Immediate next steps</h3>
+<p>Shortest route first. Steps 1–2 cost no code changes at all; step 3 is the only one that adds a capability.</p>
+<ol>
+<li><strong>Read the whole pipeline in order, in four functions.</strong> <code>extract_entities</code><br />
+   (<code>mem0/utils/entity_extraction.py:751</code>), <code>_upsert_entity</code> (<code>mem0/memory/main.py:605</code>), Phase 7 of<br />
+<code>_add_to_vector_store</code> (<code>main.py:1100</code>), <code>_compute_entity_boosts</code> (<code>main.py:1747</code>). That is everything —<br />
+   recognition, write, batch write, read — and it is roughly 250 lines of source. §1–§7 of this report is<br />
+   an index to those four reads, not a substitute for them.</li>
+<li><strong>Observe the entity store before touching it.</strong> After a few <code>add()</code> calls, query the<br />
+<code>&lt;collection&gt;_entities</code> collection directly — the name is built at <code>main.py:422-424</code> from<br />
+<code>self.collection_name</code> (<code>main.py:501</code>) — and read one row's <code>linked_memory_ids</code> payload field<br />
+   (<code>main.py:638-643</code>). That list <em>is</em> the graph — there is nothing else to look at. No code change required.</li>
+<li><strong>The single smallest change that creates real memory↔memory edges:</strong> read the extractor's<br />
+<code>linked_memory_ids</code> in Phase 4 and persist them onto the memory payload — about 30 lines, in<br />
+<code>_add_to_vector_store</code> around <code>main.py:1007-1045</code>, with the payload assembly it feeds at <code>1032-1039</code>.<br />
+   The plumbing is already half-built: <code>uuid_mapping</code> (<code>main.py:937-939</code>) is assigned precisely to resolve<br />
+   the integer ids (<code>"0"</code>, <code>"1"</code>) the LLM was given back into real uuids, and is currently never read — so<br />
+   the resolver you need is already built and sitting ~95 lines above the drop.</li>
+<li><strong>Make the 0.95 merge safe before trusting it</strong> (<code>main.py:621-631</code>). Log or assert on any merge where<br />
+   the incoming <code>entity_text</code> and the matched row's <code>data</code> differ — cosine ≥ 0.95 on <code>en_core_web_sm</code> is<br />
+   not the same claim as "same entity", and the append-only merge at <code>:626-629</code> (a single-id append, never<br />
+   a removal) is irreversible.</li>
+<li><strong>If a real graph is the requirement, stop reading OSS code.</strong> Read<br />
+<code>docs/platform/features/graph-memory.mdx</code> instead, and treat <code>mem0/proxy/main.py:181-182</code> as the only<br />
+   place OSS code even looks for <code>relations</code> — it is the seam where the two implementations were once the<br />
+   same one.</li>
+<li><strong>Optional hygiene:</strong> delete or wire up the dead paths — <code>format_entities</code><br />
+   (<code>mem0/memory/utils.py:79-88</code>, zero callers) and <code>get_update_memory_messages</code><br />
+   (<code>mem0/configs/prompts.py:406+</code>, unreachable per §4) — so the next reader is not misled into thinking a<br />
+   triple formatter and a reconciliation prompt imply a graph.</li>
+</ol>
+<h3 id="provenance">Provenance</h3>
+<table>
+<thead>
+<tr>
+<th scope="col"></th>
+<th scope="col"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Repo path</strong></td>
+<td><code>/home/mmonk/Downloads/mem0-main(3)/mem0-main</code></td>
+</tr>
+<tr>
+<td><strong>Package / version</strong></td>
+<td><code>mem0ai</code> <code>2.2.1</code> — <code>pyproject.toml:6-7</code> (<code>name = "mem0ai"</code>, <code>version = "2.2.1"</code>)</td>
+</tr>
+<tr>
+<td><strong>Report date</strong></td>
+<td>2026-10-26</td>
+</tr>
+<tr>
+<td><strong>Method</strong></td>
+<td>Every line number in §1–§8 was read from that tree with <code>sed -n</code> / <code>grep -n</code>; greps are pasted byte-identical to live output, hit counts included (zero-hit greps show their exit status). No line number is inferred or carried over from a summary.</td>
+</tr>
+<tr>
+<td><strong>Corrections against an earlier draft</strong></td>
+<td>Three citations in this report were wrong in the draft and are fixed here: the semantic gate is read at <code>scoring.py:111-112</code> (not <code>:121</code>, which builds the result dict); the final-score threshold's <code>0.1</code> is a <code>search()</code> signature default at <code>main.py:1399</code>, not a module constant; and the multi-hop/traverse grep is 0 hits <strong>only</strong> with <code>--include=*.py</code> — the raw command returns 9, all lockfile noise (<code>estraverse</code>, <code>json-schema-traverse</code> in <code>server/dashboard/pnpm-lock.yaml</code>)</td>
+</tr>
+<tr>
+<td><strong>Scope limit</strong></td>
+<td>The <strong>sync</strong> path is documented in detail. Async twins exist and are cited only where they differ: <code>_compute_entity_boosts_async</code> <code>main.py:3433</code> (dampener <code>3493-3495</code>), <code>_upsert_entity_async</code> <code>main.py:2290</code>, <code>_search_vector_store</code> (<code>async def</code>, no <code>_async</code> suffix) <code>main.py:3330</code> (<code>threshold=0.1</code> default). Line numbers in the two families are not interchangeable.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<footer class="prov"><p>Generated 2026-10-26 from the source-level analysis of <code>mem0ai</code> v2.2.1 at <code>/home/mmonk/Downloads/mem0-main(3)/mem0-main</code>. The markdown companion <code>mem0-entity-graph-pipeline.md</code> in this folder is the source of truth; this HTML is rendered from it verbatim (python-markdown) so the two cannot drift. Every <code>path:line</code> citation was read from that tree with <code>sed -n</code> / <code>grep -n</code>; pasted greps are byte-identical to live output, hit counts and zero-hit exit statuses included. Sync path documented in detail; async twins cited only where they differ.</p></footer>
+</main>
+</body>
+</html>

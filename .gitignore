@@ -1,0 +1,38 @@
+# mmemz — ignore rules for the packaging skeleton.
+# Deliberately does NOT ignore deliverables/ or JOURNAL.md: those are tracked
+# working record, not build output.
+
+# --- Python bytecode -------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.pyc
+
+# --- Virtual environments --------------------------------------------------
+.venv/
+venv/
+env/
+
+# --- Build / packaging artifacts -------------------------------------------
+dist/
+build/
+*.egg-info/
+.eggs/
+*.so
+
+# --- Tool caches -----------------------------------------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Agent scratch dir -----------------------------------------------------
+# .shrimp/ is the agent scratch dir (contexts, work-unit briefs, scratch files).
+# Never tracked.
+.shrimp/
+
+# --- Session transcripts ---------------------------------------------------
+sessions/
+
+# --- Local agent harness config --------------------------------------------
+# config.yaml is a symlink to the agent harness's own config (provider keys,
+# MCP servers). It is not part of mmemz and must never be committed.
+config.yaml
