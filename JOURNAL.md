@@ -425,3 +425,38 @@ names, not by re-reading the docstring.
 
 **Remaining toward the goal:** commit these as a second commit and push (the
 remote is at b23857a, which predates this pass).
+
+## 2026-10-26 — ledger close-out + remediation verification
+
+**Where I started:** three work-unit ledger rows still carried "remainder
+RECORDED, not a close" — `030dcbd3` (maths-core), `3d65b4d0` (graph-service) and
+`5781a81b` (pkg-audit). Each had been cut at its turn cap with its artifact
+already on disk; none had a recorded outcome.
+
+**What I produced:**
+
+1. Verified each editor remainder against the live tree rather than at the time
+   of the cut. The suite decomposes exactly: `test_scoring` 45 + `test_bm25` 23
+   (the maths-core remainder) + `test_entities` 69 + `test_graph` 26 +
+   `test_service` 31 = **194 OK**. Both rows now close as delivered.
+2. The pkg-audit row needed a second reader, not my own grading of my own fixes,
+   so I spawned a fresh-context reviewer (`6a613970`, read-only, 40-turn bound)
+   to re-derive each of the nine findings' closures. Result: **9/9 PASS**, plus
+   both functional checks — `entities.py:957-961` parses "hired" to exactly one
+   proposition, and `service.py:535` moves `before = len(self.memories)` ahead of
+   the get-or-create at `:537-539` (behaviourally verified, delta 1). Report:
+   `deliverables/audit-remediation-verification.md`, 174 lines.
+3. The second reader caught one residual **my remediation introduced**: README
+   still advertised a 193-test suite against a 194-test reality — contradicting
+   the same commit's CHANGELOG. Corrected both occurrences (`README.md:17`, `:85`)
+   and re-verified `grep -c 193 README.md` → 0.
+
+**Why the second reader mattered:** it is the only check that could have caught
+item 3, because I was the author of the defect. It also corrected two of its own
+probe assumptions (no `n_matched` attribute — use `len(r.matched_entities)`;
+`extract_propositions` is the function, `extract` the method), which it recorded
+so the probes reproduce.
+
+**State:** HEAD `4c25e15`, local == remote, 33 tracked files, working tree clean.
+Fresh clone of `https://github.com/nevru666/mmemz` runs **194 tests OK** and
+contains no stale 193.
