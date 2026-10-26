@@ -6,9 +6,16 @@
 # Why vendored rather than reimplemented: stdlib-only, and strictly stronger than
 # mem0's single entity hop: bounded multi-hop BFS where mem0 does no traversal at all.
 #
-# Everything below line 1 of the source is byte-identical to it. The ONLY additions
-# are this comment block and the SOURCE_PATH / SOURCE_LINES constants after __all__.
-# Verify with: diff <source> mmemz/graph_walk.py
+# NOT unconditionally byte-identical, and this header does not claim it is. Exactly
+# three things differ, and `diff <source> mmemz/graph_walk.py` (27 differing lines,
+# 3 hunks) shows all of them:
+#   1. this provenance header is prepended;
+#   2. the source's line 3, a bare scaffolding marker `anchor: e1f02845` that leaked
+#      into the source during its own authoring, is DELETED -- it is agent scratch,
+#      not code, and mmemz must not carry it; this is the one deletion inside the body
+#      and it is a blank-line-adjacent comment removal with no effect on behaviour;
+#   3. SOURCE_PATH / SOURCE_LINES constants are added after __all__.
+# Every executable statement is byte-identical to the source.
 # ---------------------------------------------------------------------------
 
 """Deterministic bounded graph expansion + "10 trees" derivation.

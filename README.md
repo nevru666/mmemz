@@ -25,13 +25,13 @@ different rules for editing.
 
 | Module | Status | Purpose |
 | --- | --- | --- |
-| `mmemz/entities.py` | written | Entity and attribute extraction/merge: the per-memory entity arm, the attribute reconciliation rules lifted from mem0 v2.2.1, and supersede-by-default updates. |
-| `mmemz/scoring.py` | written | mem0 v2.2.1's scoring maths — similarity, recency/importance weighting, and the entity boost — reimplemented against `math` and `json` only. |
+| `mmemz/entities.py` | written | Name normalisation, entity-type decision, `EntityStore` with exact-then-fuzzy dedupe (cosine >= 0.82), and `Proposition(subject, predicate, object)` carrying `attributed_to` as a qualifier. |
+| `mmemz/scoring.py` | written | mem0 v2.2.1's **entity-relevance arm only**: bounded (ceiling 0.5, `1/(1+0.001(n-1)^2)` count decay, max across links) plus the legacy summing arm behind an opt-in mode. Imports `__future__` and `typing` only. It does **not** implement similarity or recency/importance weighting — those live in `service.py` (`_similarity`) and are not ported. |
 | `mmemz/bm25.py` | written (latent) | Pure-Python BM25 lexical scoring for the fallback/lexical arm, with no numpy or scipy in the import path. |
-| `mmemz/graph.py` | written | The graph content store: nodes, typed edges, per-memory link caps, and the reconcile-by-supersede update path. |
-| `mmemz/service.py` | written | Service layer: the search/write API surface, flag handling for rollback-safe behaviour, and the wiring that binds graph + scoring + bm25 together. |
+| `mmemz/graph.py` | written | The bipartite store: two `dict[str, set[str]]` maps (memory->entities and the reverse), so `entity_memory_count` is O(1) and `remove_memory` is a real subtraction. Unweighted edges, no link cap; supersede lives in `service.consolidate`, not here. |
+| `mmemz/service.py` | written | The six phases (`recognize`, `inject`, `extract`, `consolidate`, `return_entities`, `reconstruct`) plus `search`/`remember`/`forget`, and the bounded-vs-legacy mode flag. It wires graph + scoring; it does **not** call `bm25` (`is_used_by_service()` is `False`). |
 | `mmemz/graph_walk.py` | vendored | Vendored, stdlib-only copy of `memory_service_v_2.3.0`'s multi-hop traversal — bounded frontier expansion with cycle guards. |
-| `mmemz/vecops.py` | vendored (-numpy) | Vendored, stdlib-only copy of `memory_service_v_2.3.0`'s vector helpers: cosine, normalisation, small top-k. |
+| `mmemz/vecops.py` | vendored (-numpy) | Vendored, stdlib-only copy of `memory_service_v_2.3.0`'s vector helpers: `cosine`, `cosine_batch`, `normalize`. There is no top-k helper in either tree. |
 
 ## Provenance
 
@@ -40,8 +40,10 @@ Two source trees are read, neither is modified:
 - `/home/mmonk/Downloads/mem0-main(3)/mem0-main` — mem0 **v2.2.1**. Source of
   the entity/attribute memory maths: how entities are pulled out of a fact, how
   an attribute is matched against what is already stored, and how the entity
-  arm is scored. Note that this maths uses only `math` and `json` from the
-  standard library — it carries no numeric-stack dependency of its own.
+  arm is scored. Note that the arithmetic itself carries no numeric-stack
+  dependency: the entity arm is `math` only. (mem0's *module* also imports
+  qdrant/networkx/pydantic around it — mmemz takes the arithmetic and leaves
+  those behind.)
 - `/home/mmonk/Downloads/LSTM_VS_LLM/memory_service_v_2.3.0` — the graph content
   memory service. Source of the proven structures mmemz is grounded in: the
   multi-hop `graph_walk` traversal, the `vecops` vector helpers, and the shape
@@ -56,10 +58,14 @@ Two source trees are read, neither is modified:
    import and run on a bare CPython ≥ 3.10 with an empty site-packages, and must
    be droppable into `memory_service_v_2.3.0` without touching its pinned
    dependency set. Any proposed dependency has to argue against both trees.
-2. **A per-memory bound on the entity arm.** Entity scoring is capped per
-   memory. Cost must never scale with how many links a memory has accumulated —
-   a hub node with a thousand edges must not make recall of that memory more
-   expensive than one with three. The bound is on the arm, not on the graph.
+2. **A per-memory bound on the entity arm's *value*.** A memory's entity boost
+   is capped at 0.5 and damped by its own link count, so no amount of linking
+   can push one memory's arm above that ceiling. This is a bound on the score,
+   **not on the cost**: the arm still iterates the memory's links (O(links) per
+   candidate, plus one O(links) count pass), measured at ~2 us for 10 links and
+   ~1.8 ms for 10 000. Bounding the *work* would need a cached per-entity
+   aggregate, which 0.1.0 does not have. This is the honest statement of the
+   rule: the value is bounded, the traversal is not.
 3. **Reconcile by supersede, not ADD-only.** Updates resolve against what is
    already stored: a new attribute value supersedes the old one rather than
    piling up beside it. ADD-only accumulation is treated as the bug it is, and
@@ -80,8 +86,9 @@ The six phases run end to end over a fixed six-memory corpus
 tests ... OK`.
 
 **Recognize + inject + rank.** Query `"Lovelace Babbage London"`. The two modes
-are the same arithmetic except at one term, and that term inverts the ranking —
-which is the whole reason the port keeps both:
+are the same arithmetic except at two terms — the per-link weight and how the
+links combine — and together they invert the ranking, which is the whole reason
+the port keeps both:
 
 ```
 bounded:  m3 0.3849 (sim 0.3849, rel 0.0000, mult 1.0000)
@@ -90,14 +97,59 @@ legacy:   m2 0.6925 (sim 0.1925, rel 0.5000, mult 0.6925, matched=('london',))
           m3 0.3849 (sim 0.3849, rel 0.0000, mult 0.3849)
 ```
 
-`m2` is linked to two of the query's three entities weakly; `m3` to one of them
-strongly. Legacy *sums* the links and puts `m2` first; bounded takes the *max*,
-gates it, and puts `m3` first. mem0 v2.2.1 takes the max (`main.py:1822`); the
-target sums (`memory_retrieval.py:778-780`). Bounded is the default.
+What actually produces that inversion, measured rather than described: **only
+one** of the three query words resolves to an entity (`london`, at 0.5), and no
+memory in the corpus matches two query entities (`max n_matched == 1`). So the
+max-versus-sum term **never fires on this query** — it needs two matched links
+to differ. The split comes from the two other differences:
 
-**Consolidate.** `m5` restates `m1` word for word. `remember()` reconciles rather
-than appending, so `memory_count_delta == 0` and `len(service.memories)` does not
-move. mem0's `:1209-1212` is the ADD branch that grows on a restatement.
+- **the per-link weight**: the same link scores `0.5` legacy and `0.25` bounded;
+- **the algebra**: legacy *adds* relevance to similarity (`0.1925 + 0.50 = 0.6925`,
+  and it then reads `mult` as the total — so `mult < 1` *lowers* the score);
+  bounded *multiplies* by a bounded factor (`0.1925 x 1.25 = 0.2406`).
+
+`m2` therefore leads under legacy on the strength of its one weak link while
+bounded keeps `m3`'s higher raw similarity on top. The max-vs-sum distinction is
+real and separately tested -- with two links scoring `0.9` each,
+`bounded_entity_relevance` returns `0.45` (the max link, held under the 0.5
+ceiling) where `legacy_entity_relevance` returns `1.8` (the sum,
+`test_legacy_cap_is_optional_and_off_by_default`) -- but it is not what this table
+shows. mem0 v2.2.1 takes the max (`main.py:1822`); the target sums
+(`memory_retrieval.py:778-780`). Bounded is the default.
+
+**Consolidate — and its real limit.** Reconciliation is keyed on the *memory id*,
+and it supersedes rather than appends when the same head gets a new object:
+
+```
+remember("m1", "Ada Lovelace is based in London.")
+remember("m1", "Ada Lovelace is based in Manchester.")
+  live:       [('ada lovelace', 'is', 'based in manchester')]
+  superseded: [('ada lovelace', 'is', 'based in london')]     len(memories) == 1
+```
+
+The old proposition is retained with a `superseded_by` stamp instead of being
+deleted, because "this changed" is itself knowledge — the same reason the
+target's `_reconcile` keeps bitemporal bounds (`consolidation.py:1187`).
+mem0's `:1209-1212` is the ADD branch that grows on a restatement.
+
+**Two honest limits on that claim**, both measured:
+
+1. The same text under a **different id** still accumulates — `remember("m1", …)`
+   then `remember("m5", …)` with identical text leaves `len(memories) == 2`. The
+   dedupe is per-id reconciliation, not cross-id memory deduplication. mem0's
+   ADD-only defect is closed for *restatement of a known id*, and not otherwise.
+2. `extract()` is a small lexical splitter (a `_PREDICATE_VERBS` list plus
+   `_plausible_name`), not an LLM. It returns `[]` for a sentence whose verb is
+   not in that list, and a memory with no propositions has nothing to reconcile —
+   it links to its entities and stores no facts. The list covers the verbs this
+   corpus needs (`hired`, `is`, `works`, `manages`, `reports`, `owns`, `signed`,
+   `acquired`, …); a sentence outside it silently stores no fact. (This bit the
+   test suite: until `hired` was added, `m1` and `m5` both stored zero
+   propositions, so the restatement test passed on two empty lists and proved
+   nothing. The test now asserts the fact exists first — see
+   `test_restating_a_fact_does_not_grow_the_memory_count`.) In production the
+   extractor is meant to be the model call; this one exists so the store's
+   semantics are testable without a network.
 
 **Reconstruct.** `reconstruct("m1")` returns the traversal, not a flat list —
 `len(path) == 10` here, every hop naming the entity it crossed:
@@ -114,5 +166,5 @@ The path comes from the vendored bounded BFS in `mmemz/graph_walk.py`. mem0 has
 no path to return: its entity hop is one edge.
 
 **Alias dedupe.** `"Acme Corp"` and `"ACME Corporation"` reach one row because
-`service._expand_legal_forms` makes them textually identical before lookup, so
+the module-level `_expand_legal_forms` makes them textually identical before lookup, so
 `len(store)` stays below the raw mention count.

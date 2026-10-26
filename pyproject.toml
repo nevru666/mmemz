@@ -15,10 +15,10 @@
 #    own runtime requirements, installing it beside that tree would either
 #    re-resolve those pins or drag in a second, conflicting generation of them
 #    — and the entity/attribute maths does not need any of it.
-# 3. The original mem0 maths that mmemz extracts uses only `math` and `json`
-#    from the standard library. Anything that maths needs can be written in
-#    pure Python; anything that would need a numeric stack belongs in the
-#    host service, not here.
+# 3. The extracted entity-relevance maths needs only `math` (plus `typing` for
+#    annotations). mem0's *module* does import qdrant/networkx around that
+#    arithmetic, but the arithmetic itself does not use them. Anything that
+#    would need a numeric stack belongs in the host service, not here.
 #
 # The consequence: mmemz must stay importable on a bare CPython >= 3.10 with
 # an empty site-packages. Any future dependency addition needs to argue

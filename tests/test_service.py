@@ -14,9 +14,16 @@ The corpus is built to exercise exactly four properties:
    mention count.
 2. **Bounded and legacy disagree.** The bounded arm takes the max over an
    entity's links, gated and count-damped; the legacy arm sums them. On the query
-   "Lovelace Babbage London" the legacy arm ranks m2 (two weak links) above m3
-   (one strong link) -- the summation defect in one line -- and bounded reverses
-   it.
+   "Lovelace Babbage London" the legacy arm ranks m2 (one matched link, weight
+   0.5, added to similarity) above m3 (no matched link, higher raw similarity),
+   and bounded reverses it. Note precisely *why*, because the obvious reading is
+   wrong: only `london` resolves, so `n_matched` is 1 for every memory in this
+   corpus and the max-vs-sum term never fires here. The inversion comes from the
+   per-link weight (0.5 legacy, 0.25 bounded) and from the algebra (legacy adds,
+   bounded multiplies). The max-vs-sum difference is exercised separately in
+   `tests/test_scoring.py`, where two links scoring 0.9 give 0.45 bounded
+   (`test_modes_are_provably_different_on_a_shared_input`) against 1.8 legacy
+   (`test_legacy_cap_is_optional_and_off_by_default`).
 3. **Consolidation supersedes without growing the count.** m5 restates m1 word for
    word, and m6 states a *changed object* for one of m2's facts.
 4. **reconstruct returns a real path.** Not a stub: hops produced by the vendored
@@ -63,6 +70,8 @@ class CorpusTestCase(unittest.TestCase):
 
     def setUp(self) -> None:
         self.svc = build_service()
+        #: The corpus size as built, so a test can assert growth *relative* to it.
+        self._baseline_count = len(self.svc.memories)
 
 
 class AliasDedupeTest(CorpusTestCase):
@@ -158,19 +167,50 @@ class ConsolidationTest(CorpusTestCase):
     """Assertion 3: supersede without growing the memory count."""
 
     def test_restating_a_fact_does_not_grow_the_memory_count(self):
+        # GUARD FIRST. This test passed for a while on two EMPTY proposition lists
+        # -- ``extract()`` could not parse "hired", so m1 and m5 both stored zero
+        # facts and "restated or not added" was vacuously true. Assert there is a
+        # real fact to restate, or the test proves nothing. Audit finding 2.
+        live = self.svc.memories["m1"].propositions
+        self.assertTrue(
+            live,
+            "m1 stored no propositions -- the restatement below would be vacuous",
+        )
         before = len(self.svc.memories)
         report = self.svc.remember(
             "m5", CORPUS[0][1], attributed_to="minutes"
         )  # verbatim restatement of m1
         self.assertEqual(len(self.svc.memories), before)
         self.assertEqual(report.memory_count_delta, 0)
-        self.assertTrue(report.restated or not report.added)
+        self.assertTrue(
+            report.restated,
+            f"expected a restated triple, got report={report!r}",
+        )
+        # The restatement must name the fact that was actually stored.
+        self.assertEqual(
+            report.restated[0],
+            (live[0].subject, live[0].predicate, live[0].object),
+        )
 
     def test_a_new_memory_does_not_grow_any_other_memory(self):
         """Ingesting a genuinely new memory adds one, and only one."""
         before = len(self.svc.memories)
         self.svc.remember("m7", "Zeta Partners visited London with Ada Lovelace.")
         self.assertEqual(len(self.svc.memories), before + 1)
+
+    def test_memory_count_delta_can_report_growth(self):
+        """Regression: the delta is sampled BEFORE get-or-create, so it is capable
+        of reporting the growth it causes.
+
+        The 0.1.0 original sampled ``len(self.memories)`` *after* inserting the
+        memory, so a brand-new id always reported ``0`` -- a field that could
+        never disagree with the caller's expectation. Audit finding 8 (LOW).
+        """
+        report = self.svc.consolidate(
+            "never-seen-before", [Proposition("ada lovelace", "is", "a pioneer")]
+        )
+        self.assertEqual(report.memory_count_delta, 1)
+        self.assertEqual(len(self.svc.memories), self._baseline_count + 1)
 
     def test_changed_object_supersedes_the_old_proposition(self):
         """m2 says the base is London; a later report moves it to Paris."""

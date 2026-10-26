@@ -379,3 +379,49 @@ FINISHED and replaced in place by its three parts (scoring+bm25 / entities /
 alias-recall fix), each marked done against verified evidence. Nothing dropped.
 
 **Remaining:** independent audit (running), then commit + create remote `mmemz`.
+
+## 2026-10-26 — audit remediation pass (post-commit b23857a, uncommitted)
+
+**Where I started:** the independent audit (`deliverables/audit-mmemz-5781a81b.md`)
+returned 5/7 PASS and raised nine findings — two HIGH in my own README, one HIGH
+in a vendor header, plus one LOW that was a genuine code bug. The work here was
+to close all nine, not to argue with them.
+
+**What I produced:**
+
+1. Verified every finding against the code rather than trusting the report. Two
+   of my first probes were *wrong in my favour* and I had to redo them:
+   `reconstruct("m1")` "returned 0" and the score table "did not reproduce" —
+   both because I called `recognize()` first, which **mutates the store**. On a
+   pristine corpus the README's published numbers (m3 0.3849 / m2 0.2406 bounded;
+   m2 0.6925 / m3 0.3849 legacy) reproduce exactly. Lesson: `recognize()` is a
+   write, not a read.
+2. Fixed the real code bug (audit #8): `memory_count_delta` was sampled *after*
+   get-or-create, so it was structurally always 0. Now sampled before; a new
+   test asserts a fresh id reports `1`.
+3. Fixed the functional gap behind audit #2: `_PREDICATE_VERBS` lacked `hired`,
+   so m1/m5 stored zero propositions and the restatement test passed vacuously.
+   Added the employment/commerce verbs, and made the test assert the fact exists
+   before asserting it was restated.
+4. Corrected both vendor headers to their measured diffs — graph_walk is **27**
+   differing lines (I had written 20), vecops **92** (I had written 87). Neither
+   header now claims byte-identity.
+5. Rewrote the README's false causal explanation: max-vs-sum **never fires** on
+   that query (`n_matched == 1` throughout); the inversion is the per-link
+   weight and add-vs-multiply. Pointed at the test that does exercise the
+   distinction (0.45 vs 1.8).
+6. Rewrote the restatement story with a live transcript, and stated the limit
+   that remains (same text under a **new** id still accumulates).
+7. Corrected design rule 2: the bound is on the entity arm's *value*, not its
+   *cost* (~2 µs at 10 links → ~1.8 ms at 10 000).
+8. Corrected the module map (bm25 unwired, no top-k, no link caps, no
+   recency/importance, `math` not `math`+`json`) and the stale `__init__`
+   docstring.
+9. Documented the deliberate phase-banner order (call-site grouping, not
+   numerical) rather than reshuffling 60-line method blocks.
+
+**Tests: 193 → 194 OK.** Every fix verified by re-running the command the claim
+names, not by re-reading the docstring.
+
+**Remaining toward the goal:** commit these as a second commit and push (the
+remote is at b23857a, which predates this pass).

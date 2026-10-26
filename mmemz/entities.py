@@ -952,6 +952,16 @@ _PREDICATE_VERBS: tuple[str, ...] = (
     "include", "included", "meets", "meet", "met", "sends", "send", "sent",
     "creates", "create", "created", "attended", "attend", "attends",
     "purchased", "purchase", "purchases", "visited", "visit", "visits",
+    # Employment / commerce verbs. "hired" was the notable omission: the corpus's
+    # first memory is "Acme Corp hired Ada Lovelace ..." and it stored ZERO
+    # propositions, so the restatement test (m1/m5) passed trivially -- two
+    # empty fact lists are equal. A verb list that cannot parse the sentence it
+    # is tested on is a gap, not a limitation. Audit finding 2.
+    "hired", "hire", "hires", "signed", "sign", "signs", "acquired", "acquire",
+    "sold", "sell", "sells", "bought", "buy", "buys", "partners", "partnered",
+    "contracts", "contracted", "employs", "employ", "employed", "appointed",
+    "appoints", "appoint", "directs", "direct", "directed", "heads", "head",
+    "headed", "serves", "serve", "served", "holds", "hold", "held",
 )
 
 #: Attributive cue phrases: the text after one of these is a provenance label.

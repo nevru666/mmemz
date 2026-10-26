@@ -358,6 +358,18 @@ class MemoryService:
         self.weight = weight
         self.memories: dict[str, StoredMemory] = {}
 
+    # ------------------------------------------------------------------
+    # The six phases, in the report's numbering (1 recognize, 2 inject, 3
+    # extract, 4 consolidate, 5 return_entities, 6 reconstruct).
+    #
+    # NOTE ON ORDER: the methods below are grouped by *call site*, not by phase
+    # number, so the banners read 1, 3, 4, 2, 5, 6. That is deliberate -- ingest
+    # (``remember``) runs 1->3->4 and query (``_rank``) runs 1->2->5, so a reader
+    # following the write path never jumps over a 60-line method that belongs to
+    # the read path. The phase number in each banner is the report's, so the two
+    # can be read side by side.
+    # ------------------------------------------------------------------
+
     # --- phase 1: recognize ----------------------------------------------
     def recognize(self, text: str) -> list[Entity]:
         """Phase 1 -- every entity in ``text``, deduped through the store.
@@ -517,11 +529,14 @@ class MemoryService:
         it against ``len(service.memories)``.
         """
         report = ConsolidationReport(memory_id=memory_id)
+        # Sampled BEFORE the get-or-create below. Sampling it afterwards (as 0.1.0
+        # originally did) makes the field structurally incapable of reporting the
+        # growth this call causes, so a caller checking it would always read 0.
+        before = len(self.memories)
         mem = self.memories.get(memory_id)
         if mem is None:
             mem = StoredMemory(memory_id, "")
             self.memories[memory_id] = mem
-        before = len(self.memories)
 
         for prop in propositions:
             triple = (prop.subject, prop.predicate, prop.object)

@@ -17,7 +17,7 @@
 # for the STM read hot loop, which mmemz does not have.
 #
 # This file is therefore NOT byte-identical to its source, and does not claim to
-# be. ``diff <source> mmemz/vecops.py`` reports 87 differing lines: this header,
+# be. ``diff <source> mmemz/vecops.py`` reports 92 differing lines: this header,
 # the docstring rewording above, the removed numpy probe/branches, and the
 # ``_HAS_NUMPY`` constants dropped after them. No formula, edge case or return
 # type was changed -- the surviving body IS the source's ``else`` path.
