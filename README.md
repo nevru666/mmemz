@@ -14,7 +14,7 @@ traffic. The extraction is deliberately narrow. mmemz is not a fork of mem0 and
 not a fork of the memory service; it takes the scoring/reconciliation logic from
 the first, the traversal and service scaffolding from the second, and joins them
 behind one small, importable package. This is **0.1.0**: all seven modules below
-exist, pass a 193-test stdlib suite, and carry no third-party import.
+exist, pass a 194-test stdlib suite, and carry no third-party import.
 
 ## Module map
 
@@ -82,7 +82,7 @@ Two source trees are read, neither is modified:
 ## What 0.1.0 actually does — one run, pasted
 
 The six phases run end to end over a fixed six-memory corpus
-(`tests/test_service.py`). `python3 -m unittest discover -s tests` → `Ran 193
+(`tests/test_service.py`). `python3 -m unittest discover -s tests` → `Ran 194
 tests ... OK`.
 
 **Recognize + inject + rank.** Query `"Lovelace Babbage London"`. The two modes
